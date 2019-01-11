@@ -15,13 +15,56 @@ using Autodesk.AutoCAD.Colors;
 namespace spdicadlib
 {
     public class SpdiLib
-    {
+    { 
         Editor ed = Application.DocumentManager.MdiActiveDocument.Editor;
+        //获取要填写的字符串
+        String dlinetext_str = "默认字符串";
+        double dlinetext_str_height = 125;
         [CommandMethod("dlinetext")]
         public void dlinetext()
         {
+            bool isPointSelected = false;
+            while (!isPointSelected)
+            {
+                //获取要放的位置
+                PromptPointOptions ppo = new PromptPointOptions("点击基点的位置 或者 ");
+                ppo.Keywords.Add("S", "S", "修改字符大小(S)");
+                PromptPointResult ppr = ed.GetPoint(ppo);
+
+                Point3d p3d = new Point3d(0, 0, 0);
+                if (ppr.Status == PromptStatus.Keyword)
+                {
+                    if (ppr.StringResult == "S")
+                    {
+                        PromptDoubleOptions pdo = new PromptDoubleOptions("修改字符大小为：");
+                        PromptDoubleResult pdr = ed.GetDouble(pdo);
+                        dlinetext_str_height = pdr.Value;
+                    }
+                }
+                else if (ppr.Status != PromptStatus.OK)
+                {
+                    ed.WriteMessage("出现错误");
+                    isPointSelected = true;
+                    return;
+                }
+                else
+                {
+                    p3d = ppr.Value;
+                    drawlinetext(p3d);
+                    isPointSelected = true;
+                }
+            }
+            
+            //Point3dCollection pc = new Point3dCollection(new Point3d[] { new Point3d(20, 10, 0), new Point3d(35, -5, 0), new Point3d(80, 0, 0) });
+            //Polyline3d pl = new Polyline3d(Poly3dType.QuadSplinePoly, pc, true);
+            //ToModelSpace(pl);
+            //Circle cir = new Circle(Point3d.Origin, Vector3d.ZAxis, 15);
+            //ToModelSpace(cir);
+        }
+
+        void drawlinetext(Point3d p3d)
+        {
             //获取要填写的字符串
-            String str = "默认字符串";
             PromptStringOptions pso = new PromptStringOptions("输入要填写的字符串：");
             PromptResult pr = ed.GetString(pso);
             if (pr.Status != PromptStatus.OK)
@@ -31,38 +74,13 @@ namespace spdicadlib
             }
             else
             {
-                str = pr.StringResult;
-            }
-            //int strsize = str.Length;
-
-            //获取要放的位置
-            PromptPointOptions ppo = new PromptPointOptions("点击基点的位置：");
-            PromptPointResult ppr = ed.GetPoint(ppo);
-            Point3d p3d = new Point3d(0,0,0);
-            if (ppr.Status != PromptStatus.OK)
-            {
-                ed.WriteMessage("出现错误");
-                return;
-            }
-            else
-            {
-                p3d = ppr.Value;
+                dlinetext_str = pr.StringResult;
             }
 
-            ToModelSpace(DBtext(p3d, str,125));
-            if (str.Length > 4)
-            {
-                ToModelSpace(new Line(new Point3d(p3d.X, p3d.Y - 25, p3d.Z), new Point3d(p3d.X + (double)(125 * 1.44 * str.Length), p3d.Y - 25, p3d.Z)));
-            }
-            else
-            {
-                ToModelSpace(new Line(new Point3d(p3d.X, p3d.Y - 25, p3d.Z), new Point3d(p3d.X + (double)(125 * 1.65 * str.Length), p3d.Y - 25, p3d.Z)));
-            }
-            //Point3dCollection pc = new Point3dCollection(new Point3d[] { new Point3d(20, 10, 0), new Point3d(35, -5, 0), new Point3d(80, 0, 0) });
-            //Polyline3d pl = new Polyline3d(Poly3dType.QuadSplinePoly, pc, true);
-            //ToModelSpace(pl);
-            //Circle cir = new Circle(Point3d.Origin, Vector3d.ZAxis, 15);
-            //ToModelSpace(cir);
+            ToModelSpace(DBtext(p3d, dlinetext_str, dlinetext_str_height));
+            double gain = 1+Math.Pow(0.8,0.12*dlinetext_str.Length+dlinetext_str_height/75);
+            ToModelSpace(new Line(new Point3d(p3d.X, p3d.Y - dlinetext_str_height * 0.25, p3d.Z),
+                            new Point3d(p3d.X + (double)(dlinetext_str_height * gain * dlinetext_str.Length), p3d.Y - dlinetext_str_height * 0.25, p3d.Z)));    
         }
 
         //<summary>
@@ -103,5 +121,27 @@ namespace spdicadlib
         }
 
 
+        [CommandMethod("dcirrr100")]
+        public void dcirr100()
+        {
+            //获取要放的位置
+            PromptPointOptions ppo = new PromptPointOptions("点击基点的位置：");
+            PromptPointResult ppr = ed.GetPoint(ppo);
+            Point3d p3d = new Point3d(0,0,0);
+            if (ppr.Status != PromptStatus.OK)
+            {
+                ed.WriteMessage("出现错误");
+                return;
+            }
+            else
+            {
+                p3d = ppr.Value;
+            }
+            Circle cir = new Circle(p3d, Vector3d.ZAxis, 100);
+            ToModelSpace(cir);
+
+        }
+
+        //new Func add here!!!
     }
 }
