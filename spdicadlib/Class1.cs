@@ -16,17 +16,10 @@ using Autodesk.AutoCAD.Colors;
 
 namespace spdicadlib
 {
-    enum Dircetion
-    {
-        HorizonDown = 1,
-        HorizonUp = 2,
-        VerticalDown = 3,
-        VerticalUp = 4,
-    }
-
     public class SpdiLib
     { 
         Editor ed = Application.DocumentManager.MdiActiveDocument.Editor;
+        Document doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
 
         //获取要填写的字符串
         String dlinetext_str = "默认字符串";
@@ -172,11 +165,13 @@ namespace spdicadlib
         {
             bool isEnd = false;
             uint count = 0;
+            uint times = 1;
             //获取要放的位置
             PromptPointOptions ppo;
             ppo = new PromptPointOptions("\n点击确定点的位置 或者 ");
             ppo.Keywords.Add("H", "H", "输入长度(H)");
             ppo.Keywords.Add("L", "L", "获取长度(L)");
+            ppo.Keywords.Add("T", "T", "倍数(T)");
             ppo.Keywords.Add("D", "D", "修改方向(D)");
             Point3d p3dBefore = new Point3d(0, 0, 0);
             while (!isEnd)
@@ -197,6 +192,20 @@ namespace spdicadlib
                         //PromptDistanceOptions pdo = new PromptDistanceOptions("点击两点确定距离");
                         PromptDoubleResult pdr = ed.GetDistance("点击两点确定距离");
                         dtable_gradient = pdr.Value;
+                    }
+                    if (ppr.StringResult == "T")
+                    {
+                        //PromptDistanceOptions pdo = new PromptDistanceOptions("点击两点确定距离");
+                        PromptIntegerOptions pio = new PromptIntegerOptions("确定倍数");
+                        PromptIntegerResult pir = ed.GetInteger(pio);
+                        if (pir.Value <= 0)
+                        {
+                            ed.WriteMessage("非法输入！");
+                        }
+                        else
+                        {
+                            times = (uint)(pir.Value);
+                        }
                     } 
                     if (ppr.StringResult == "D")
                     {
@@ -251,7 +260,7 @@ namespace spdicadlib
                     }
                     else 
                     {
-                        dtableLine(p3dBefore, p3dAfter, dtable_gradient, arg);
+                        dtableLine(p3dBefore, p3dAfter, dtable_gradient, arg, times);
                         p3dBefore = p3dAfter;
                     }
                     count++;
@@ -259,17 +268,135 @@ namespace spdicadlib
             }
         }
 
-        public void dtableLine(Point3d p3db, Point3d p3de,double gradient, Point3d arg)
+        //<summary>
+        //由起始点、终点信息、表格高度和方向标识Point3d生成表格所需要的直线
+        //</summary>
+        //<parpam name = "p3db">起始点的Point3d</parpam>
+        //<parpam name = "p3de">起始点的Point3d</parpam>
+        //<parpam name = "gradient">表格高度</parpam>
+        //<parpam name = "arg">方向标识单位矢量</parpam>
+        //<parpam name = "times">倍数</parpam>
+        //<return>对象ObjectId</return>
+        public void dtableLine(Point3d p3db, Point3d p3de,double gradient, Point3d arg, uint times)
         {
-            Line line = new Line(p3db,
-                                                new Point3d(p3db.X + arg.X * gradient, p3db.Y + arg.Y * gradient, p3db.Z + arg.Z * gradient));
-            Line line1 = new Line(new Point3d(p3db.X + arg.X * gradient, p3db.Y + arg.Y * gradient, p3db.Z + arg.Z * gradient),
-                                new Point3d(p3de.X + arg.X * gradient, p3de.Y + arg.Y * gradient, p3de.Z + arg.Z * gradient));
+            for (int i = 1; i <= times; i++)
+            {
+                Line line = new Line(new Point3d(p3db.X + arg.X * gradient * i, p3db.Y + arg.Y * gradient * i, p3db.Z + arg.Z * gradient * i),
+                                    new Point3d(p3de.X + arg.X * gradient * i, p3de.Y + arg.Y * gradient * i, p3de.Z + arg.Z * gradient * i));
+                ToModelSpace(line);
+            }
+            Line line1 = new Line(p3db,
+                                new Point3d(p3db.X + arg.X * gradient * times, p3db.Y + arg.Y * gradient * times, p3db.Z + arg.Z * gradient * times));
             Line line2 = new Line(p3de,
-                                new Point3d(p3de.X + arg.X * gradient, p3de.Y + arg.Y * gradient, p3de.Z + arg.Z * gradient));
-            ToModelSpace(line);
+                                new Point3d(p3de.X + arg.X * gradient * times, p3de.Y + arg.Y * gradient * times, p3de.Z + arg.Z * gradient * times));
             ToModelSpace(line1);
             ToModelSpace(line2);
+        }
+        
+        [CommandMethod("dsc")]
+        public void dsc()
+        {
+            //添加实体对象
+            DBObjectCollection dboc = collection();
+            if (dboc == null) { ed.WriteMessage("任务中止"); return; }
+            
+            //计算缩放比例
+            /*double factor;
+            double factor1;
+            double factor2;
+            PromptDoubleResult pdr1 = ed.GetDistance("\n确定原始图形尺寸参照物");
+            factor1 = pdr1.Value;
+            PromptDoubleResult pdr2 = ed.GetDistance("\n确定缩放图形尺寸参照物");
+            factor2 = pdr2.Value;
+            factor = factor2 / factor1;*/
+
+            //获取基点
+            PromptPointOptions ppo = new PromptPointOptions("\n获取基点");
+            PromptPointResult ppr = ed.GetPoint(ppo);
+            Point3d basePt;
+            if (ppr.Status == PromptStatus.OK)
+            {
+                basePt = ppr.Value;
+            }
+            else{ ed.WriteMessage("出现错误，任务中止");return; }
+
+            ppo = new PromptPointOptions("\n获取目标点");
+            ppr = ed.GetPoint(ppo);
+            Point3d targetPt;
+            if (ppr.Status == PromptStatus.OK)
+            {
+                targetPt = ppr.Value;
+            }
+            else{ ed.WriteMessage("出现错误，任务中止");return; }
+
+
+            //移动选择的所有对象
+            Database db = doc.Database;
+            using (Transaction trans = db.TransactionManager.StartTransaction())
+            {
+
+                foreach (DBObject obj in dboc)
+                {
+                    Entity ent = obj as Entity;
+                    if (ent != null)
+                    {
+                        Entity entn;
+                        entn = (Entity)trans.GetObject(ent.ObjectId, OpenMode.ForWrite, true);
+                        move(entn, basePt, targetPt);
+                    }
+                }
+                trans.Commit();
+                trans.Dispose();
+            }
+        }
+
+        public DBObjectCollection collection()
+        {
+            Entity ent = null;
+            DBObjectCollection entCollection = new DBObjectCollection();
+            PromptSelectionResult psr = ed.GetSelection();
+            if (psr.Status == PromptStatus.OK)
+            {
+                Database db = doc.Database;
+                using (Transaction trans = db.TransactionManager.StartTransaction())
+                {
+                    SelectionSet ss = psr.Value;
+                    foreach (ObjectId id in ss.GetObjectIds())
+                    {
+                        ent = (Entity)trans.GetObject(id, OpenMode.ForWrite, true);
+                        if(ent != null) entCollection.Add(ent);
+                    }
+                    trans.Commit();
+                    trans.Dispose();
+                }
+            }
+            else
+            {
+                return null;
+            }
+            return entCollection;
+        }
+
+
+        public void move(Entity ent, Point3d basePt, Point3d targetPt)
+        {
+            Vector3d vec = targetPt - basePt;
+            Matrix3d mt = Matrix3d.Displacement(vec);
+            ent.TransformBy(mt);
+        }
+
+
+        //<summary>
+        //指定基点与比例缩放实体
+        //</summary>
+        //<parpam name = "ent">需要缩放的实体</parpam>
+        //<parpam name = "basePt">基点</parpam>
+        //<parpam name = "scaleFactor">缩放比例</parpam>
+        //<return>对象ObjectId</return>
+        public void scale(Entity ent, Point3d basePt, double scaleFactor)
+        {
+            Matrix3d mt = Matrix3d.Scaling(scaleFactor,basePt);
+            ent.TransformBy(mt);
         }
 
         //new Func add here!!!
