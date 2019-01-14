@@ -292,25 +292,47 @@ namespace spdicadlib
             ToModelSpace(line1);
             ToModelSpace(line2);
         }
-        
+
+        double scaleFactor = 2;
         [CommandMethod("dsc")]
         public void dsc()
         {
             //添加实体对象
             DBObjectCollection dboc = collection();
             if (dboc == null) { ed.WriteMessage("任务中止"); return; }
-            
-            //计算缩放比例
-            /*double factor;
-            double factor1;
-            double factor2;
-            PromptDoubleResult pdr1 = ed.GetDistance("\n确定原始图形尺寸参照物");
-            factor1 = pdr1.Value;
-            PromptDoubleResult pdr2 = ed.GetDistance("\n确定缩放图形尺寸参照物");
-            factor2 = pdr2.Value;
-            factor = factor2 / factor1;*/
 
             //获取基点
+            PromptKeywordOptions pko = new PromptKeywordOptions("缩放比例指定方式：");
+            pko.Keywords.Add("C", "C", "选择缩放比例参照物(C)");
+            pko.Keywords.Add("F", "F", "指定缩放比例（F）");
+            PromptResult pr = ed.GetKeywords(pko);
+
+            if (pr.Status == PromptStatus.OK)
+            {
+                if(pr.StringResult == "C")
+                {
+                    //计算缩放比例
+                    double factor;
+                    double factor1;
+                    double factor2;
+                    PromptDoubleResult pdr1 = ed.GetDistance("\n确定原始图形尺寸参照物");
+                    factor1 = pdr1.Value;
+                    PromptDoubleResult pdr2 = ed.GetDistance("\n确定缩放图形尺寸参照物");
+                    factor2 = pdr2.Value;
+                    scaleFactor = factor2 / factor1;
+                }
+                if(pr.StringResult == "F")
+                {
+                    PromptDoubleOptions pdo = new PromptDoubleOptions("指定缩放比例：");
+                    PromptDoubleResult pdr = ed.GetDouble(pdo);
+                    if(pdr.Status == PromptStatus.OK)
+                    {
+                        scaleFactor = pdr.Value;
+                    }
+                    else { ed.WriteMessage("任务中止"); return; }
+                }
+            }
+
             PromptPointOptions ppo = new PromptPointOptions("\n获取基点");
             PromptPointResult ppr = ed.GetPoint(ppo);
             Point3d basePt;
@@ -328,13 +350,10 @@ namespace spdicadlib
                 targetPt = ppr.Value;
             }
             else{ ed.WriteMessage("出现错误，任务中止");return; }
-
-
-            //移动选择的所有对象
+            
             Database db = doc.Database;
             using (Transaction trans = db.TransactionManager.StartTransaction())
             {
-
                 foreach (DBObject obj in dboc)
                 {
                     Entity ent = obj as Entity;
@@ -342,9 +361,13 @@ namespace spdicadlib
                     {
                         Entity entn;
                         entn = (Entity)trans.GetObject(ent.ObjectId, OpenMode.ForWrite, true);
+                        //移动实体
                         move(entn, basePt, targetPt);
+                        //缩放实体
+                        scale(entn,targetPt, scaleFactor);
                     }
                 }
+
                 trans.Commit();
                 trans.Dispose();
             }
