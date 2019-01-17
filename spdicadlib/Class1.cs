@@ -13,7 +13,6 @@ using Autodesk.AutoCAD.LayerManager;
 using Autodesk.AutoCAD.Colors;
 
 
-
 namespace spdicadlib
 {
     public class SpdiLib
@@ -373,6 +372,10 @@ namespace spdicadlib
             }
         }
 
+        //<summary>
+        //获取实体集合
+        //</summary>
+        //<return>实体集合DBObjectCollection</return>
         public DBObjectCollection collection()
         {
             Entity ent = null;
@@ -400,7 +403,13 @@ namespace spdicadlib
             return entCollection;
         }
 
-
+        //<summary>
+        //移动单个实体
+        //</summary>
+        //<parpam name = "ent">需要移动的实体</parpam>
+        //<parpam name = "basePt">移动点的基点</parpam>
+        //<parpam name = "targetPt">一动点的目标点</parpam>
+        //<return>无返回类型</return>
         public void move(Entity ent, Point3d basePt, Point3d targetPt)
         {
             Vector3d vec = targetPt - basePt;
@@ -422,6 +431,235 @@ namespace spdicadlib
             ent.TransformBy(mt);
         }
 
+        double cirr = 480;
+        double arcr = 340;
+        double sAngel = 180;
+        double nAngel = 90;
+        double textHeight = 375;
+        [CommandMethod("daa")]
+        public void daa()
+        {
+            PromptPointOptions ppo = new PromptPointOptions("\n选择基点 或者 ");
+            ppo.Keywords.Add("CR", "CR", "修改外圆半径（CR）");
+            ppo.Keywords.Add("AR", "AR", "修改内弧半径（AR）");
+            ppo.Keywords.Add("N", "N", "修改指北角度（N）");
+            ppo.Keywords.Add("S", "S", "修改字体大小");
+            
+            Point3d basePt = new Point3d(0,0,0);
+            bool isEnd = false;
+            while (!isEnd)
+            {
+                PromptPointResult ppr = ed.GetPoint(ppo);
+                if (ppr.Status == PromptStatus.OK)
+                {
+                    basePt = ppr.Value;
+                    PromptDoubleOptions pdo = new PromptDoubleOptions("\n方向角大小（需为与正半轴的夹角）");
+                    PromptDoubleResult pdr = ed.GetDouble(pdo);
+                    if(pdr.Status == PromptStatus.OK)
+                    {
+                        sAngel = nAngel - pdr.Value;
+                        ToModelSpace(new Circle(basePt, Vector3d.ZAxis, cirr));
+                        ToModelSpace(new Arc(basePt, Vector3d.ZAxis,arcr,angelToRad(sAngel), angelToRad(nAngel)));
+                        ToModelSpace(new Line(basePt, new Point3d(basePt.X + cirr * Math.Cos(angelToRad(nAngel)),
+                                                                  basePt.Y + cirr * Math.Sin(angelToRad(nAngel)),
+                                                                  basePt.Z)));
+                        ToModelSpace(new Line(new Point3d(basePt.X + cirr * Math.Cos(angelToRad(nAngel)),
+                                                                  basePt.Y + cirr * Math.Sin(angelToRad(nAngel)),
+                                                                  basePt.Z) , 
+                                              new Point3d(basePt.X + cirr * Math.Cos(angelToRad(nAngel)) + (cirr - arcr) * Math.Cos(angelToRad(nAngel + 210)),
+                                                                  basePt.Y + cirr * Math.Sin(angelToRad(nAngel)) + (cirr - arcr) * Math.Sin(angelToRad(nAngel + 210)),
+                                                                  basePt.Z)));
+                        ToModelSpace(DBtext(new Point3d(basePt.X + (cirr + textHeight) * Math.Cos(angelToRad(nAngel)),
+                                                                  basePt.Y + (cirr + textHeight) * Math.Sin(angelToRad(nAngel)),
+                                                                  basePt.Z), "N", textHeight));
+                        ToModelSpace(new Line(basePt, new Point3d(basePt.X + cirr * Math.Cos(angelToRad(sAngel)),
+                                                                  basePt.Y + cirr * Math.Sin(angelToRad(sAngel)),
+                                                                  basePt.Z)));
+                        ToModelSpace(new Line(new Point3d(basePt.X + cirr * Math.Cos(angelToRad(sAngel)),
+                                                                  basePt.Y + cirr * Math.Sin(angelToRad(sAngel)),
+                                                                  basePt.Z), 
+                                              new Point3d(basePt.X + cirr * Math.Cos(angelToRad(sAngel)) + (cirr - arcr) * Math.Cos(angelToRad(sAngel + 210)),
+                                                                  basePt.Y + cirr * Math.Sin(angelToRad(sAngel)) + (cirr - arcr) * Math.Sin(angelToRad(sAngel + 210)),
+                                                                  basePt.Z)));
+                        ToModelSpace(DBtext(new Point3d(basePt.X + (cirr + textHeight) * Math.Cos(angelToRad(sAngel)),
+                                                                  basePt.Y + (cirr + textHeight) * Math.Sin(angelToRad(sAngel)),
+                                                                  basePt.Z), pdr.Value.ToString()+"°", textHeight));
+                        isEnd = true;
+                    }
+                    else
+                    {
+                        ed.WriteMessage("出现错误，任务终止。");
+                        return;
+                    }
+                }
+                if(ppr.Status == PromptStatus.Keyword)
+                {
+                    ppo.Keywords.Add("CR", "CR", "修改外圆半径（CR）");
+                    ppo.Keywords.Add("AR", "AR", "修改内弧半径（AR）");
+                    ppo.Keywords.Add("N", "N", "修改指北角度（N）");
+                    ppo.Keywords.Add("S", "S", "修改字体大小(S)");
+                    if (ppr.StringResult == "CR")
+                    {
+                        PromptDoubleOptions pdo = new PromptDoubleOptions("\n修改外圆半径");
+                        PromptDoubleResult pdr = ed.GetDouble(pdo);
+                        if(pdr.Status == PromptStatus.OK)
+                        {
+                            cirr = pdr.Value;
+                        }else
+                        {
+                            ed.WriteMessage("填写非法");
+                            isEnd = true;
+                        }
+                    }
+                    if(ppr.StringResult == "AR")
+                    {
+                        PromptDoubleOptions pdo = new PromptDoubleOptions("\n修改内弧半径");
+                        PromptDoubleResult pdr = ed.GetDouble(pdo);
+                        if (pdr.Status == PromptStatus.OK)
+                        {
+                            arcr = pdr.Value;
+                        }
+                        else
+                        {
+                            ed.WriteMessage("填写非法");
+                            isEnd = true;
+                        }
+                    }
+                    if(ppr.StringResult == "N")
+                    {
+                        PromptDoubleOptions pdo = new PromptDoubleOptions("\n修改指北角度（与x轴正向所成的夹角）");
+                        PromptDoubleResult pdr = ed.GetDouble(pdo);
+                        if (pdr.Status == PromptStatus.OK)
+                        {
+                            nAngel = pdr.Value;
+                        }
+                        else
+                        {
+                            ed.WriteMessage("填写非法");
+                            isEnd = true;
+                        }
+                    }
+                    if(ppr.StringResult == "S")
+                    {
+                        PromptDoubleOptions pdo = new PromptDoubleOptions("\n修改字体大小");
+                        PromptDoubleResult pdr = ed.GetDouble(pdo);
+                        if (pdr.Status == PromptStatus.OK)
+                        {
+                            textHeight = pdr.Value;
+                        }
+                        else
+                        {
+                            ed.WriteMessage("填写非法");
+                            isEnd = true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        double angelToRad(double angel)
+        {
+            double rad = (Math.PI*angel)/180;
+            return rad;
+        }
+        
+        [CommandMethod("dtf")]
+        public void dtf()
+        {
+            int lutDiraction = 1;
+            PromptKeywordOptions pko = new PromptKeywordOptions("选择对齐方向");
+            pko.Keywords.Add("XL", "XL", "竖直方向左对齐(XL)");
+            pko.Keywords.Add("XR", "XR", "竖直方向右对齐(XR)");
+            pko.Keywords.Add("XC", "XC", "竖直方向居中对齐(XC)");
+            pko.Keywords.Add("Y", "Y", "水平方向对齐(Y)");
+            pko.Keywords.Add("Z", "Z", "前后方向对齐(Z)");
+            PromptResult pr = ed.GetKeywords(pko);
+            if (pr.Status == PromptStatus.OK)
+            {
+                if (pr.StringResult == "XL")
+                {
+                    lutDiraction = 0;
+                }
+                if (pr.StringResult == "XR")
+                {
+                    lutDiraction = 1;
+                }
+                if (pr.StringResult == "XC")
+                {
+                    lutDiraction = 2;
+                }
+                if (pr.StringResult == "Y")
+                {
+                    lutDiraction = 3;
+                }
+                if (pr.StringResult == "Z")
+                {
+                    lutDiraction = 4;
+                }
+            }
+
+            bool isEnd = false;
+            PromptEntityOptions peo = new PromptEntityOptions("\n选择一个对象");
+            PromptEntityResult per = ed.GetEntity(peo);
+            if(per.Status == PromptStatus.OK)
+            {
+                Database db = doc.Database;
+                using (Transaction trans = db.TransactionManager.StartTransaction())
+                {
+                    Entity ent = (Entity)trans.GetObject(per.ObjectId, OpenMode.ForWrite, true);
+                    Extents3d e3d = ent.GeometricExtents;
+                    Point3d p3dmin = e3d.MinPoint;
+                    Point3d p3dmax = e3d.MaxPoint;
+                    peo.Keywords.Add("E", "E", "结束(E)");
+                    while (!isEnd)
+                    {
+                        per = ed.GetEntity(peo);
+                        if (per.Status == PromptStatus.OK)
+                        {
+                            Entity entn = (Entity)trans.GetObject(per.ObjectId, OpenMode.ForWrite, true);
+                            Extents3d e3dn = entn.GeometricExtents;
+                            if (lutDiraction == 0)//XL
+                            {
+                                move(entn, e3dn.MinPoint, new Point3d(p3dmin.X, e3dn.MinPoint.Y, e3dn.MinPoint.Z));
+                            }
+                            if (lutDiraction == 1)//XR
+                            {
+                                move(entn, e3dn.MaxPoint, new Point3d(p3dmax.X, e3dn.MinPoint.Y, e3dn.MinPoint.Z));
+//                                move(entn, e3dn.MinPoint, new Point3d(e3dn.MinPoint.X, p3d.Y, e3dn.MinPoint.Z));
+                            }
+                            if (lutDiraction == 2)//XC
+                            {
+                                move(entn, new Point3d((e3dn.MinPoint.X+ e3dn.MaxPoint.X)/2, (e3dn.MinPoint.Y + e3dn.MaxPoint.Y) / 2, (e3dn.MinPoint.Z + e3dn.MaxPoint.Z) / 2),
+                                           new Point3d((p3dmax.X+p3dmin.X)/2, (e3dn.MinPoint.Y + e3dn.MaxPoint.Y) / 2, (e3dn.MinPoint.Z + e3dn.MaxPoint.Z) / 2));
+                            }
+                            if (lutDiraction == 3)//YC
+                            {
+                                move(entn, new Point3d((e3dn.MinPoint.X + e3dn.MaxPoint.X) / 2, (e3dn.MinPoint.Y + e3dn.MaxPoint.Y) / 2, (e3dn.MinPoint.Z + e3dn.MaxPoint.Z) / 2),
+                                           new Point3d((e3dn.MinPoint.X + e3dn.MaxPoint.X) / 2, (p3dmax.Y + p3dmin.Y) / 2, (e3dn.MinPoint.Z + e3dn.MaxPoint.Z) / 2));
+                            }
+                            if (lutDiraction == 4)//ZC
+                            {
+                                move(entn, new Point3d((e3dn.MinPoint.X + e3dn.MaxPoint.X) / 2, (e3dn.MinPoint.Y + e3dn.MaxPoint.Y) / 2, (e3dn.MinPoint.Z + e3dn.MaxPoint.Z) / 2),
+                                           new Point3d((e3dn.MinPoint.X + e3dn.MaxPoint.X) / 2, (e3dn.MinPoint.Y + e3dn.MaxPoint.Y) / 2, (p3dmax.Z + p3dmin.Z) / 2));
+                            }
+                        }
+                        if (per.Status == PromptStatus.Keyword)
+                        {
+                            if (per.StringResult == "E")
+                            {
+                                isEnd = true;
+                            }
+                        }
+                        if (per.Status == PromptStatus.Cancel)
+                        {
+                            isEnd = true;
+                        }
+                    }
+                    trans.Commit();
+                    trans.Dispose();
+                }
+            }
+        }
         //new Func add here!!!
     }
 }
