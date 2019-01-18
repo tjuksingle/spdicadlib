@@ -84,10 +84,14 @@ namespace spdicadlib
                 dlinetext_str = pr.StringResult;
             }
 
-            ToModelSpace(DBtext(p3d, dlinetext_str, dlinetext_str_height));
-            double gain = 1+Math.Pow(0.8,0.12*dlinetext_str.Length+dlinetext_str_height/75);
+            //ToModelSpace(DBtext(p3d, dlinetext_str, dlinetext_str_height));
+            //double gain = 1 + Math.Pow(0.8, 0.12 * dlinetext_str.Length + dlinetext_str_height / 75);
+            MText mMText = newMtext(new Point3d(p3d.X, p3d.Y + 1.2 * dlinetext_str_height, p3d.Z),
+                                  dlinetext_str, dlinetext_str_height, 0, 0, false);
+            ToModelSpace(mMText); 
+            Extents3d e3d = mMText.GeometricExtents;
             ToModelSpace(new Line(new Point3d(p3d.X, p3d.Y - dlinetext_str_height * 0.25, p3d.Z),
-                            new Point3d(p3d.X + (double)(dlinetext_str_height * gain * dlinetext_str.Length), p3d.Y - dlinetext_str_height * 0.25, p3d.Z)));    
+                            new Point3d(p3d.X + e3d.MaxPoint.X - e3d.MinPoint.X, p3d.Y - dlinetext_str_height * 0.25, p3d.Z)));    
         }
 
         //<summary>
@@ -124,6 +128,34 @@ namespace spdicadlib
             ent.Position = position;
             ent.TextString = textString;
             ent.Height = height;
+            return ent;
+        }
+
+        //<summary>
+        //由插入点、文字内容、文字样式、文字高度、文字宽度创建多行文字
+        //</summary>
+        //<parpam name = "position">基点</parpam>
+        //<parpam name = "textString">文字内容</parpam>
+        //<parpam name = "height">文字高度</parpam>
+        //<parpam name = "width">文字宽度</parpam>
+        //<parpam name = "rot">文字转角</parpam>
+        //<parpam name = "rot">是否包含域</parpam>
+        //<return>多行文字MText</return>
+        MText newMtext(Point3d position, String textString, double height,double width,double rot,bool isField)
+        {
+            MText ent = new MText();
+            ent.Location = position;
+            ent.TextHeight = height;
+            ent.Width = width;
+            ent.Rotation = rot;
+            if (isField)
+            {
+                Field field = new Field(textString);
+                ent.SetField(field);
+            }else
+            {
+                ent.Contents = textString;
+            }
             return ent;
         }
 
@@ -311,7 +343,6 @@ namespace spdicadlib
                 if(pr.StringResult == "C")
                 {
                     //计算缩放比例
-                    double factor;
                     double factor1;
                     double factor2;
                     PromptDoubleResult pdr1 = ed.GetDistance("\n确定原始图形尺寸参照物");
@@ -657,6 +688,133 @@ namespace spdicadlib
                     }
                     trans.Commit();
                     trans.Dispose();
+                }
+            }
+        }
+
+        [CommandMethod("dcenter")]
+        public void dcenter()
+        {
+            PromptEntityOptions peo = new PromptEntityOptions("\n选择一个对象");
+            PromptEntityResult per = ed.GetEntity(peo);
+            if (per.Status == PromptStatus.OK)
+            {
+                Database db = doc.Database;
+                using (Transaction trans = db.TransactionManager.StartTransaction())
+                {
+                    Entity ent = (Entity)trans.GetObject(per.ObjectId, OpenMode.ForWrite, true);
+                    Extents3d e3d = ent.GeometricExtents;
+                    Point3d p3dmin = e3d.MinPoint;
+                    Point3d p3dmax = e3d.MaxPoint;
+
+                    PromptPointOptions ppo = new PromptPointOptions("\n获取对角点1");
+                    PromptPointResult ppr = ed.GetPoint(ppo);
+                    Point3d basePt1;
+                    if (ppr.Status == PromptStatus.OK)
+                    {
+                        basePt1 = ppr.Value;
+                    }
+                    else { ed.WriteMessage("出现错误，任务中止"); return; }
+
+                    ppo = new PromptPointOptions("\n获取对角点2");
+                    ppr = ed.GetPoint(ppo);
+                    Point3d basePt2;
+                    if (ppr.Status == PromptStatus.OK)
+                    {
+                        basePt2 = ppr.Value;
+                    }
+                    else { ed.WriteMessage("出现错误，任务中止"); return; }
+
+                    move(ent, new Point3d((p3dmin.X + p3dmax.X) / 2, (p3dmin.Y + p3dmax.Y) / 2, (p3dmin.Z + p3dmax.Z) / 2),
+                              new Point3d((basePt1.X+basePt2.X) / 2,(basePt1.Y + basePt2.Y) / 2,(basePt1.Z + basePt2.Z)/ 2));
+                    trans.Commit();
+                    trans.Dispose();
+                }
+            }
+            else
+            {
+                ed.WriteMessage("任务结束。");
+            }
+        }
+
+        double dnStrHeight = 125;
+        [CommandMethod("dn")]
+        public void dn()
+        {
+            PromptPointOptions ppo = new PromptPointOptions("\n选择基点");
+            PromptPointResult ppr = ed.GetPoint(ppo);
+            Point3d basePt;
+            if (ppr.Status == PromptStatus.OK)
+            {
+                basePt = ppr.Value;
+                ToModelSpace(new Line(basePt,
+                            new Point3d(basePt.X + 150, basePt.Y, basePt.Z)));
+                ToModelSpace(new Line(basePt,
+                            new Point3d(basePt.X - 150, basePt.Y, basePt.Z)));
+                ToModelSpace(new Line(basePt,
+                            new Point3d(basePt.X, basePt.Y - 200, basePt.Z)));
+                ToModelSpace(new Line(basePt,
+                            new Point3d(basePt.X, basePt.Y + 800, basePt.Z)));
+                ToModelSpace(new Line(new Point3d(basePt.X, basePt.Y + 800, basePt.Z),
+                            new Point3d(basePt.X - 150 * Math.Sin(angelToRad(30)), 
+                                        basePt.Y + 800 - 150*Math.Cos(angelToRad(30)), 
+                                        basePt.Z)));
+                PromptDoubleOptions pdo = new PromptDoubleOptions("\n给定角度（相对于Y轴正向，左负右正）");
+                PromptDoubleResult pdr = ed.GetDouble(pdo);
+                if(pdr.Status == PromptStatus.OK)
+                {
+                    double an = pdr.Value;
+                    double angel;
+                    if(an < 0)
+                    {
+                        angel = 90 + an;
+                    }
+                    else
+                    {
+                        angel = 90 - an;
+                    }
+                    if(angel == 0 && an != 90 && an != -90)
+                    {
+                        ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
+                                         "N", dnStrHeight, 0, 0, false));
+                        return;
+                    }
+                    else
+                    {
+                        ToModelSpace(new Line(new Point3d((basePt.X + 800 * Math.Cos(angelToRad(angel))) + 150*Math.Cos(angelToRad(240-an)), 
+                                                           (basePt.Y + 800 * Math.Sin(angelToRad(angel))) + 150*Math.Sin(angelToRad(240-an)), 
+                                                           basePt.Z),
+                                              new Point3d(basePt.X + 800 * Math.Cos(angelToRad(angel)), basePt.Y + 800 * Math.Sin(angelToRad(angel)), basePt.Z)));
+                        ToModelSpace(new Line(basePt,
+                                              new Point3d(basePt.X + 800*Math.Cos(angelToRad(angel)), basePt.Y + 800*Math.Sin(angelToRad(angel)), basePt.Z)));
+
+                        PromptKeywordOptions pko = new PromptKeywordOptions("90°方向是北吗？");
+                        pko.Keywords.Add("Y", "Y", "是(Y)");
+                        pko.Keywords.Add("N", "N", "否(N)");
+                        PromptResult pr = ed.GetKeywords(pko);
+                        if(pr.Status == PromptStatus.OK)
+                        {
+                            if(pr.StringResult == "Y")
+                            {
+                                
+                                ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
+                                                  "N", dnStrHeight, 0, 0, false));
+                                ToModelSpace(newMtext(new Point3d(basePt.X + 1000 * Math.Cos(angelToRad(angel)), 
+                                                                  basePt.Y + 1000 * Math.Sin(angelToRad(angel)), 
+                                                                  basePt.Z), 
+                                                      Math.Abs(an).ToString() + "°", dnStrHeight, 0, 0, false));
+                            }
+                            else
+                            {
+                                ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
+                                                  Math.Abs(an).ToString()+"°", dnStrHeight, 0, 0, false));
+                                ToModelSpace(newMtext(new Point3d(basePt.X + 1000 * Math.Cos(angelToRad(angel)),
+                                                                  basePt.Y + 1000 * Math.Sin(angelToRad(angel)),
+                                                                  basePt.Z),
+                                                      "N", dnStrHeight, 0, 0, false));
+                            }
+                        }
+                    }
                 }
             }
         }
