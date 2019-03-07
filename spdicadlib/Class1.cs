@@ -57,12 +57,6 @@ namespace spdicadlib
                     isPointSelected = true;
                 }
             }
-            
-            //Point3dCollection pc = new Point3dCollection(new Point3d[] { new Point3d(20, 10, 0), new Point3d(35, -5, 0), new Point3d(80, 0, 0) });
-            //Polyline3d pl = new Polyline3d(Poly3dType.QuadSplinePoly, pc, true);
-            //ToModelSpace(pl);
-            //Circle cir = new Circle(Point3d.Origin, Vector3d.ZAxis, 15);
-            //ToModelSpace(cir);
         }
 
         //<summary>
@@ -91,7 +85,7 @@ namespace spdicadlib
             ToModelSpace(mMText); 
             Extents3d e3d = mMText.GeometricExtents;
             ToModelSpace(new Line(new Point3d(p3d.X, p3d.Y - dlinetext_str_height * 0.25, p3d.Z),
-                            new Point3d(p3d.X + e3d.MaxPoint.X - e3d.MinPoint.X, p3d.Y - dlinetext_str_height * 0.25, p3d.Z)));    
+                            new Point3d(p3d.X + e3d.MaxPoint.X - e3d.MinPoint.X + 10 * dlinetext_str.Length, p3d.Y - dlinetext_str_height * 0.25, p3d.Z)));    
         }
 
         //<summary>
@@ -174,9 +168,7 @@ namespace spdicadlib
                 if(ppr.Status == PromptStatus.Keyword){
                     if (ppr.StringResult == "R")
                     {
-                        PromptDoubleOptions pdo = new PromptDoubleOptions("修改半径大小为：");
-                        PromptDoubleResult pdr = ed.GetDouble(pdo);
-                        dcir_r = pdr.Value;
+                        dcir_r = getNewDouble("\n修改半径大小为");
                     }
                 }else if(ppr.Status != PromptStatus.OK){
                     ed.WriteMessage("出现错误");
@@ -214,9 +206,7 @@ namespace spdicadlib
                 {
                     if (ppr.StringResult == "H")
                     {
-                        PromptDoubleOptions pdo = new PromptDoubleOptions("输入长度：");
-                        PromptDoubleResult pdr = ed.GetDouble(pdo);
-                        dtable_gradient = pdr.Value;
+                        dtable_gradient = getNewDouble("\n输入长度");
                     } 
                     if (ppr.StringResult == "L")
                     {
@@ -353,13 +343,8 @@ namespace spdicadlib
                 }
                 if(pr.StringResult == "F")
                 {
-                    PromptDoubleOptions pdo = new PromptDoubleOptions("指定缩放比例：");
-                    PromptDoubleResult pdr = ed.GetDouble(pdo);
-                    if(pdr.Status == PromptStatus.OK)
-                    {
-                        scaleFactor = pdr.Value;
-                    }
-                    else { ed.WriteMessage("任务中止"); return; }
+                    scaleFactor = getNewDouble("\n指定缩放比例");
+                    if (scaleFactor == 0){ed.WriteMessage("任务中止"); return;}
                 }
             }
 
@@ -500,9 +485,10 @@ namespace spdicadlib
                                               new Point3d(basePt.X + cirr * Math.Cos(angelToRad(nAngel)) + (cirr - arcr) * Math.Cos(angelToRad(nAngel + 210)),
                                                                   basePt.Y + cirr * Math.Sin(angelToRad(nAngel)) + (cirr - arcr) * Math.Sin(angelToRad(nAngel + 210)),
                                                                   basePt.Z)));
-                        ToModelSpace(DBtext(new Point3d(basePt.X + (cirr + textHeight) * Math.Cos(angelToRad(nAngel)),
-                                                                  basePt.Y + (cirr + textHeight) * Math.Sin(angelToRad(nAngel)),
-                                                                  basePt.Z), "N", textHeight));
+                        ToModelSpace(newMtext(new Point3d(basePt.X + (cirr + textHeight) * Math.Cos(angelToRad(nAngel)),
+                                                                  basePt.Y + (cirr + textHeight) * Math.Sin(angelToRad(nAngel)) + 1.2 * textHeight,
+                                                                  basePt.Z),
+                                                                  "N", textHeight,0,0,false));
                         ToModelSpace(new Line(basePt, new Point3d(basePt.X + cirr * Math.Cos(angelToRad(sAngel)),
                                                                   basePt.Y + cirr * Math.Sin(angelToRad(sAngel)),
                                                                   basePt.Z)));
@@ -512,9 +498,9 @@ namespace spdicadlib
                                               new Point3d(basePt.X + cirr * Math.Cos(angelToRad(sAngel)) + (cirr - arcr) * Math.Cos(angelToRad(sAngel + 210)),
                                                                   basePt.Y + cirr * Math.Sin(angelToRad(sAngel)) + (cirr - arcr) * Math.Sin(angelToRad(sAngel + 210)),
                                                                   basePt.Z)));
-                        ToModelSpace(DBtext(new Point3d(basePt.X + (cirr + textHeight) * Math.Cos(angelToRad(sAngel)),
-                                                                  basePt.Y + (cirr + textHeight) * Math.Sin(angelToRad(sAngel)),
-                                                                  basePt.Z), pdr.Value.ToString()+"°", textHeight));
+                        ToModelSpace(newMtext(new Point3d(basePt.X + (cirr + textHeight) * Math.Cos(angelToRad(sAngel)),
+                                                                  basePt.Y + (cirr + textHeight) * Math.Sin(angelToRad(sAngel)) + 1.2 * textHeight,
+                                                                  basePt.Z), pdr.Value.ToString()+"°", textHeight,0,0,false));
                         isEnd = true;
                     }
                     else
@@ -531,55 +517,34 @@ namespace spdicadlib
                     ppo.Keywords.Add("S", "S", "修改字体大小(S)");
                     if (ppr.StringResult == "CR")
                     {
-                        PromptDoubleOptions pdo = new PromptDoubleOptions("\n修改外圆半径");
-                        PromptDoubleResult pdr = ed.GetDouble(pdo);
-                        if(pdr.Status == PromptStatus.OK)
+                        cirr = getNewDouble("\n修改外圆半径");
+                        if (cirr == 0)
                         {
-                            cirr = pdr.Value;
-                        }else
-                        {
+                            cirr = 480;
                             ed.WriteMessage("填写非法");
                             isEnd = true;
                         }
                     }
                     if(ppr.StringResult == "AR")
                     {
-                        PromptDoubleOptions pdo = new PromptDoubleOptions("\n修改内弧半径");
-                        PromptDoubleResult pdr = ed.GetDouble(pdo);
-                        if (pdr.Status == PromptStatus.OK)
+                        arcr = getNewDouble("\n修改外圆半径");
+                        if (arcr == 0)
                         {
-                            arcr = pdr.Value;
-                        }
-                        else
-                        {
+                            arcr = 340;
                             ed.WriteMessage("填写非法");
                             isEnd = true;
                         }
                     }
                     if(ppr.StringResult == "N")
                     {
-                        PromptDoubleOptions pdo = new PromptDoubleOptions("\n修改指北角度（与x轴正向所成的夹角）");
-                        PromptDoubleResult pdr = ed.GetDouble(pdo);
-                        if (pdr.Status == PromptStatus.OK)
-                        {
-                            nAngel = pdr.Value;
-                        }
-                        else
-                        {
-                            ed.WriteMessage("填写非法");
-                            isEnd = true;
-                        }
+                        nAngel = getNewDouble("\n修改指北角度（与x轴正向所成的夹角）");
                     }
                     if(ppr.StringResult == "S")
                     {
-                        PromptDoubleOptions pdo = new PromptDoubleOptions("\n修改字体大小");
-                        PromptDoubleResult pdr = ed.GetDouble(pdo);
-                        if (pdr.Status == PromptStatus.OK)
+                        arcr = getNewDouble("\n修改字体大小");
+                        if (arcr == 0)
                         {
-                            textHeight = pdr.Value;
-                        }
-                        else
-                        {
+                            arcr = 375;
                             ed.WriteMessage("填写非法");
                             isEnd = true;
                         }
@@ -587,7 +552,13 @@ namespace spdicadlib
                 }
             }
         }
-        
+
+        Double getDi(Point3d p1, Point3d p2)
+        {
+            return Math.Sqrt(Math.Pow(p1.X - p2.X, 2) + Math.Pow(p1.Y - p2.Y, 2) + Math.Pow(p1.Y - p2.Y, 2));
+        }
+
+
         double angelToRad(double angel)
         {
             double rad = (Math.PI*angel)/180;
@@ -656,7 +627,6 @@ namespace spdicadlib
                             if (lutDiraction == 1)//XR
                             {
                                 move(entn, e3dn.MaxPoint, new Point3d(p3dmax.X, e3dn.MinPoint.Y, e3dn.MinPoint.Z));
-//                                move(entn, e3dn.MinPoint, new Point3d(e3dn.MinPoint.X, p3d.Y, e3dn.MinPoint.Z));
                             }
                             if (lutDiraction == 2)//XC
                             {
@@ -741,83 +711,336 @@ namespace spdicadlib
         [CommandMethod("dn")]
         public void dn()
         {
-            PromptPointOptions ppo = new PromptPointOptions("\n选择基点");
-            PromptPointResult ppr = ed.GetPoint(ppo);
-            Point3d basePt;
-            if (ppr.Status == PromptStatus.OK)
+            bool isEnd = false;
+            while (!isEnd)
             {
-                basePt = ppr.Value;
-                ToModelSpace(new Line(basePt,
-                            new Point3d(basePt.X + 150, basePt.Y, basePt.Z)));
-                ToModelSpace(new Line(basePt,
-                            new Point3d(basePt.X - 150, basePt.Y, basePt.Z)));
-                ToModelSpace(new Line(basePt,
-                            new Point3d(basePt.X, basePt.Y - 200, basePt.Z)));
-                ToModelSpace(new Line(basePt,
-                            new Point3d(basePt.X, basePt.Y + 800, basePt.Z)));
-                ToModelSpace(new Line(new Point3d(basePt.X, basePt.Y + 800, basePt.Z),
-                            new Point3d(basePt.X - 150 * Math.Sin(angelToRad(30)), 
-                                        basePt.Y + 800 - 150*Math.Cos(angelToRad(30)), 
-                                        basePt.Z)));
-                PromptDoubleOptions pdo = new PromptDoubleOptions("\n给定角度（相对于Y轴正向，左负右正）");
-                PromptDoubleResult pdr = ed.GetDouble(pdo);
-                if(pdr.Status == PromptStatus.OK)
+                PromptPointOptions ppo = new PromptPointOptions("\n选择基点 或者 ");
+                ppo.Keywords.Add("S", "S", "修改字体大小(S)");
+                PromptPointResult ppr = ed.GetPoint(ppo);
+                Point3d basePt;
+                if (ppr.Status == PromptStatus.OK)
                 {
-                    double an = pdr.Value;
-                    double angel;
-                    if(an < 0)
+                    basePt = ppr.Value;
+                    ToModelSpace(new Line(basePt,
+                                new Point3d(basePt.X + 150, basePt.Y, basePt.Z)));
+                    ToModelSpace(new Line(basePt,
+                                new Point3d(basePt.X - 150, basePt.Y, basePt.Z)));
+                    ToModelSpace(new Line(basePt,
+                                new Point3d(basePt.X, basePt.Y - 200, basePt.Z)));
+                    ToModelSpace(new Line(basePt,
+                                new Point3d(basePt.X, basePt.Y + 800, basePt.Z)));
+                    ToModelSpace(new Line(new Point3d(basePt.X, basePt.Y + 800, basePt.Z),
+                                new Point3d(basePt.X - 150 * Math.Sin(angelToRad(30)),
+                                            basePt.Y + 800 - 150 * Math.Cos(angelToRad(30)),
+                                            basePt.Z)));
+                    PromptDoubleOptions pdo = new PromptDoubleOptions("\n给定角度（相对于Y轴正向，左负右正）");
+                    PromptDoubleResult pdr = ed.GetDouble(pdo);
+                    if (pdr.Status == PromptStatus.OK)
                     {
-                        angel = 90 + an;
-                    }
-                    else
-                    {
-                        angel = 90 - an;
-                    }
-                    if(angel == 0 && an != 90 && an != -90)
-                    {
-                        ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
-                                         "N", dnStrHeight, 0, 0, false));
-                        return;
-                    }
-                    else
-                    {
-                        ToModelSpace(new Line(new Point3d((basePt.X + 800 * Math.Cos(angelToRad(angel))) + 150*Math.Cos(angelToRad(240-an)), 
-                                                           (basePt.Y + 800 * Math.Sin(angelToRad(angel))) + 150*Math.Sin(angelToRad(240-an)), 
-                                                           basePt.Z),
-                                              new Point3d(basePt.X + 800 * Math.Cos(angelToRad(angel)), basePt.Y + 800 * Math.Sin(angelToRad(angel)), basePt.Z)));
-                        ToModelSpace(new Line(basePt,
-                                              new Point3d(basePt.X + 800*Math.Cos(angelToRad(angel)), basePt.Y + 800*Math.Sin(angelToRad(angel)), basePt.Z)));
-
-                        PromptKeywordOptions pko = new PromptKeywordOptions("90°方向是北吗？");
-                        pko.Keywords.Add("Y", "Y", "是(Y)");
-                        pko.Keywords.Add("N", "N", "否(N)");
-                        PromptResult pr = ed.GetKeywords(pko);
-                        if(pr.Status == PromptStatus.OK)
+                        double an = pdr.Value;
+                        double angel;
+                        if (an < 0)
                         {
-                            if(pr.StringResult == "Y")
+                            angel = 90 + an;
+                        }
+                        else
+                        {
+                            angel = 90 - an;
+                        }
+                        if (angel == 0 && an != 90 && an != -90)
+                        {
+                            ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
+                                             "N", dnStrHeight, 0, 0, false));
+                            return;
+                        }
+                        else
+                        {
+                            ToModelSpace(new Line(new Point3d((basePt.X + 800 * Math.Cos(angelToRad(angel))) + 150 * Math.Cos(angelToRad(240 - an)),
+                                                               (basePt.Y + 800 * Math.Sin(angelToRad(angel))) + 150 * Math.Sin(angelToRad(240 - an)),
+                                                               basePt.Z),
+                                                  new Point3d(basePt.X + 800 * Math.Cos(angelToRad(angel)), basePt.Y + 800 * Math.Sin(angelToRad(angel)), basePt.Z)));
+                            ToModelSpace(new Line(basePt,
+                                                  new Point3d(basePt.X + 800 * Math.Cos(angelToRad(angel)), basePt.Y + 800 * Math.Sin(angelToRad(angel)), basePt.Z)));
+
+                            PromptKeywordOptions pko = new PromptKeywordOptions("90°方向是北吗？");
+                            pko.Keywords.Add("Y", "Y", "是(Y)");
+                            pko.Keywords.Add("N", "N", "否(N)");
+                            PromptResult pr = ed.GetKeywords(pko);
+                            if (pr.Status == PromptStatus.OK)
                             {
-                                
-                                ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
-                                                  "N", dnStrHeight, 0, 0, false));
-                                ToModelSpace(newMtext(new Point3d(basePt.X + 1000 * Math.Cos(angelToRad(angel)), 
-                                                                  basePt.Y + 1000 * Math.Sin(angelToRad(angel)), 
-                                                                  basePt.Z), 
-                                                      Math.Abs(an).ToString() + "°", dnStrHeight, 0, 0, false));
-                            }
-                            else
-                            {
-                                ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
-                                                  Math.Abs(an).ToString()+"°", dnStrHeight, 0, 0, false));
-                                ToModelSpace(newMtext(new Point3d(basePt.X + 1000 * Math.Cos(angelToRad(angel)),
-                                                                  basePt.Y + 1000 * Math.Sin(angelToRad(angel)),
-                                                                  basePt.Z),
+                                if (pr.StringResult == "Y")
+                                {
+
+                                    ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
                                                       "N", dnStrHeight, 0, 0, false));
+                                    ToModelSpace(newMtext(new Point3d(basePt.X + 1000 * Math.Cos(angelToRad(angel)),
+                                                                      basePt.Y + 1000 * Math.Sin(angelToRad(angel)),
+                                                                      basePt.Z),
+                                                          Math.Abs(an).ToString() + "°", dnStrHeight, 0, 0, false));
+                                }
+                                else
+                                {
+                                    ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
+                                                      Math.Abs(an).ToString() + "°", dnStrHeight, 0, 0, false));
+                                    ToModelSpace(newMtext(new Point3d(basePt.X + 1000 * Math.Cos(angelToRad(angel)),
+                                                                      basePt.Y + 1000 * Math.Sin(angelToRad(angel)),
+                                                                      basePt.Z),
+                                                          "N", dnStrHeight, 0, 0, false));
+                                }
                             }
                         }
+                    }
+                    isEnd = true;
+                }
+                else
+                {
+                    isEnd = true;
+                }
+                if (ppr.Status == PromptStatus.Keyword)
+                {
+                    dnStrHeight = getNewDouble("\n输入新的字体大小");
+                    if (dnStrHeight == 0)
+                    {
+                        ed.WriteMessage("\n请输入大于零的数");
+                        isEnd = true;
                     }
                 }
             }
         }
+
+
+        Point3d getNewPoint(String message)
+        {
+            PromptPointOptions pdo = new PromptPointOptions(message);
+            PromptPointResult ppr = ed.GetPoint(pdo);
+            if (ppr.Status == PromptStatus.OK)
+            {
+                return ppr.Value;
+            }
+            else { return Point3d.Origin; }
+        }
+        Double getNewDouble(String message)
+        {
+            PromptDoubleOptions pdo = new PromptDoubleOptions(message);
+            PromptDoubleResult pdr = ed.GetDouble(pdo);
+            if (pdr.Status == PromptStatus.OK)
+            {
+                return pdr.Value;
+            }
+            else
+            {
+                return 0.0;
+            }
+        }
+
+        Double getdi(String message)
+        {
+            PromptDoubleResult pdr = ed.GetDistance(message);
+            return pdr.Value;
+        }
+
+        double dtvHeight = 2000;
+        double dtvTextHeight = 100;
+        [CommandMethod("dtv")]
+        public void dTableVaule()
+        {
+            PromptKeywordOptions pko = new PromptKeywordOptions("\n初始化选择");
+            pko.Keywords.Add("D", "D", "自动获取距离(D)");
+            pko.Keywords.Add("H", "H", "手动输入(H)");
+            pko.Keywords.Add("T", "T", "修改字符高度(T)");
+            pko.Keywords.Add("H", "H", "手动输入(H)");
+            pko.Keywords.Add("S", "S", "保持上次配置(S)");
+            PromptResult pr = ed.GetKeywords(pko);
+            if (pr.Status == PromptStatus.OK)
+            {
+                if (pr.StringResult == "D")
+                {
+                    PromptDoubleResult pdr = ed.GetDistance("点击两点确定距离");
+                    dtvHeight = pdr.Value;
+                }
+                if (pr.StringResult == "H")
+                {
+                    double temp = getNewDouble("\n输入表格高度");
+                    if (temp == 0)
+                    {
+                        ed.WriteMessage("\n请输入大于零的数");
+                    }
+                    else
+                    {
+                        dtvHeight = temp;
+                    }
+                }
+                if (pr.StringResult == "T")
+                {
+                    double temp = getNewDouble("\n输入字符高度");
+                    if (temp == 0)
+                    {
+                        ed.WriteMessage("\n请输入大于零的数");
+                    }
+                    else
+                    {
+                        dtvTextHeight = temp;
+                    }
+                }
+                if (pr.StringResult == "S")
+                {
+                    
+                }
+            }
+
+            Point3d p3dB = Point3d.Origin;
+            PromptPointOptions ppo = new PromptPointOptions("\n选择一个起点");
+            PromptPointResult ppr = ed.GetPoint(ppo);
+            if (ppr.Status == PromptStatus.OK)
+            {
+                p3dB = ppr.Value;
+            }
+            else
+            {
+                ed.WriteMessage("出现错误");
+            }
+
+            bool isEnd = false;
+            int count = 0;
+            PromptStringOptions pso = new PromptStringOptions("\n输入一串字符或值");
+            while (!isEnd)
+            {
+                PromptResult psr = ed.GetString(pso);
+                if (psr.Status == PromptStatus.OK)
+                {
+                    ToModelSpace(DBtext(new Point3d(p3dB.X, p3dB.Y - count*dtvHeight, p3dB.Z), psr.StringResult, dtvTextHeight));
+                }
+                else
+                {
+                    isEnd = true;
+                }
+                count++;
+            }
+        }
+
+        double ddrr = 100;
         //new Func add here!!!
+        [CommandMethod("ddr")]
+        public void ddr()
+        {
+            Point3d pc = getNewPoint("\n输入圆心");
+            Point3d pd = getNewPoint("\n确定方向");
+            PromptKeywordOptions pko = new PromptKeywordOptions("\n选择");
+            pko.Keywords.Add("D", "D", "自动获取半径(D)");
+            pko.Keywords.Add("H", "H", "手动填入半径(H)");
+            pko.Keywords.Add("S", "S", "保持上次配置(S)");
+            PromptResult pr = ed.GetKeywords(pko);
+            if (pr.Status == PromptStatus.OK)
+            {
+                if (pr.StringResult == "D")
+                {
+                    ddrr = getdi("\n选择两点获取长度:");
+                }
+                if (pr.StringResult == "H")
+                {
+                    ddrr = getNewDouble("\n请输入长度:");
+                }
+                if (pr.StringResult == "S")
+                {
+
+                }
+            }
+
+            int bb = 0;
+            int be = 0;
+            if (pc.X - pd.X > 0)
+            {
+                if (pc.Y - pd.Y > 0)
+                {
+                    bb = 180;
+                    be = 270;
+                }
+                else
+                {
+                    bb = 90;
+                    be = 180;
+                }
+            }
+            else
+            {
+                if (pc.Y - pd.Y > 0)
+                {
+                    bb = 270;
+                    be = 0;
+                }
+                else
+                {
+                    bb = 0;
+                    be = 90;
+                }
+            }
+
+
+            Arc newArc = new Arc(pc, ddrr, angelToRad(bb), angelToRad(be));
+            ToModelSpace(newArc);
+        }
+
+        double dhcr = 0;
+        [CommandMethod("dhc")]
+        public void dhc()
+        {
+            Point3d pb = getNewPoint("\n确定起点");
+            Point3d pd = getNewPoint("\n确定方向");
+            PromptKeywordOptions pko = new PromptKeywordOptions("\n选择");
+            pko.Keywords.Add("D", "D", "自动获取直径(D)");
+            pko.Keywords.Add("H", "H", "手动填入直径(H)");
+            pko.Keywords.Add("S", "S", "保持上次配置(S)");
+
+            PromptResult pr = ed.GetKeywords(pko);
+            if (pr.Status == PromptStatus.OK)
+            {
+                if (pr.StringResult == "D")
+                {
+                    dhcr = getdi("\n选择两点获取长度:")/2;
+                }
+                if (pr.StringResult == "H")
+                {
+                    dhcr = getNewDouble("\n请输入长度:")/2;
+                }
+                if (pr.StringResult == "S")
+                {
+
+                }
+            }
+
+            Point3d pc = Point3d.Origin;
+            int bb = 0;
+            int be = 0;
+            if (pb.X - pd.X > 0)
+            {
+                bb = 90;
+                be = 270;
+                if (pb.Y - pd.Y > 0)
+                {
+                    pc = new Point3d(pb.X, pb.Y - dhcr, pb.Z);
+                }
+                else
+                {
+                    pc = new Point3d(pb.X, pb.Y + dhcr, pb.Z);
+                }
+            }
+            else
+            {
+                bb = 270;
+                be = 90;
+                if (pb.Y - pd.Y > 0)
+                {
+                    pc = new Point3d(pb.X, pb.Y - dhcr, pb.Z);
+                }
+                else
+                {
+                    pc = new Point3d(pb.X, pb.Y + dhcr, pb.Z);
+                }
+            }
+
+            Arc newArc = new Arc(pc, dhcr, angelToRad(bb), angelToRad(be));
+            ToModelSpace(newArc);
+        }
+
     }
 }
