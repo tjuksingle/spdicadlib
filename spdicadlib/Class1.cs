@@ -289,6 +289,128 @@ namespace spdicadlib
             }
         }
 
+        double dtb_gradient = 100;
+        [CommandMethod("dtb")]
+        public void dtb()
+        {
+            bool isEnd = false;
+            uint count = 0;
+            uint times = 1;
+            Point3d bePoint = Point3d.Origin;
+            Point3d endPoint = Point3d.Origin;
+            //获取已有距离
+            double be = getdi("\n选择已有长度获取点");
+            //获取要放的位置
+            PromptPointOptions ppo;
+            ppo = new PromptPointOptions("\n点击确定点的位置(第一个输入的点将为起点) 或者 ");
+            ppo.Keywords.Add("H", "H", "输入长度(H)");
+            ppo.Keywords.Add("L", "L", "获取长度(L)");
+            ppo.Keywords.Add("T", "T", "倍数(T)");
+            ppo.Keywords.Add("D", "D", "修改方向(D)");
+            ppo.Keywords.Add("E", "E", "结束(E)");
+            Point3d p3dBefore = new Point3d(0, 0, 0);
+            while (!isEnd)
+            {
+                PromptPointResult ppr = ed.GetPoint(ppo);
+
+                Point3d p3dAfter = new Point3d(0, 0, 0);
+                if (ppr.Status == PromptStatus.Keyword)
+                {
+                    if (ppr.StringResult == "H")
+                    {
+                        dtable_gradient = getNewDouble("\n输入长度");
+                    }
+                    if (ppr.StringResult == "L")
+                    {
+                        //PromptDistanceOptions pdo = new PromptDistanceOptions("点击两点确定距离");
+                        PromptDoubleResult pdr = ed.GetDistance("点击两点确定距离");
+                        dtable_gradient = pdr.Value;
+                    }
+                    if (ppr.StringResult == "T")
+                    {
+                        //PromptDistanceOptions pdo = new PromptDistanceOptions("点击两点确定距离");
+                        PromptIntegerOptions pio = new PromptIntegerOptions("确定倍数");
+                        PromptIntegerResult pir = ed.GetInteger(pio);
+                        if (pir.Value <= 0)
+                        {
+                            ed.WriteMessage("非法输入！");
+                        }
+                        else
+                        {
+                            times = (uint)(pir.Value);
+                        }
+                    }
+                    if (ppr.StringResult == "D")
+                    {
+                        PromptKeywordOptions pko = new PromptKeywordOptions("选择属性：");
+                        pko.Keywords.Add("XP", "XP", "X正半轴(XP)");
+                        pko.Keywords.Add("XN", "XN", "X负半轴(XN)");
+                        pko.Keywords.Add("YP", "YP", "Y正半轴(YP)");
+                        pko.Keywords.Add("YN", "YN", "Y负半轴(YN)");
+                        pko.Keywords.Add("ZP", "ZP", "Z正半轴(ZP)");
+                        pko.Keywords.Add("ZN", "ZN", "Z负半轴(ZN)");
+
+                        PromptResult pr = ed.GetKeywords(pko);
+                        if (pr.Status == PromptStatus.OK)
+                        {
+                            if (pr.StringResult == "XP")
+                            {
+                                arg = new Point3d(1, 0, 0);
+                            }
+                            else if (pr.StringResult == "XN")
+                            {
+                                arg = new Point3d(-1, 0, 0);
+                            }
+                            else if (pr.StringResult == "YP")
+                            {
+                                arg = new Point3d(0, 1, 0);
+                            }
+                            else if (pr.StringResult == "YN")
+                            {
+                                arg = new Point3d(0, -1, 0);
+                            }
+                            else if (pr.StringResult == "ZP")
+                            {
+                                arg = new Point3d(0, 0, 1);
+                            }
+                            else if (pr.StringResult == "ZN")
+                            {
+                                arg = new Point3d(0, 0, -1);
+                            }
+                        }
+                    }
+                    if (ppr.StringResult == "E")
+                    {
+                        endPoint = new Point3d(p3dAfter.X + arg.X * (dtable_gradient + be), p3dAfter.Y + arg.Y * (dtable_gradient + be), p3dAfter.Z + arg.Z * (dtable_gradient + be));
+                        Line line = new Line(bePoint, endPoint);
+                        ToModelSpace(line);
+                    }
+                }
+                else if (ppr.Status != PromptStatus.OK)
+                {
+                    ed.WriteMessage("结束了");
+                    isEnd = true;
+                }
+                else
+                {
+                    p3dAfter = ppr.Value;
+                    if (count == 0)
+                    {
+                        Point3d tempPoint = ppr.Value;
+                        p3dBefore = tempPoint;
+                        bePoint = new Point3d(tempPoint.X + arg.X * (dtable_gradient + be), tempPoint.Y + arg.Y * (dtable_gradient + be), tempPoint.Z + arg.Z * (dtable_gradient + be));
+                    }
+                    else
+                    {
+                        dtableLine(p3dBefore, p3dAfter, dtable_gradient + be, arg, times);
+                        p3dBefore = p3dAfter;
+                    }
+                    count++;
+                }
+            }
+        }
+
+
         //<summary>
         //由起始点、终点信息、表格高度和方向标识Point3d生成表格所需要的直线
         //</summary>
@@ -837,6 +959,18 @@ namespace spdicadlib
         {
             PromptDoubleResult pdr = ed.GetDistance(message);
             return pdr.Value;
+        }
+
+
+        [CommandMethod("drec")]
+        public void drec()
+        {
+            double w = getNewDouble("\n获取宽度");
+            double h = getNewDouble("\n获取高度");
+            Point3d pb = getNewPoint("\n获取基点");
+            Point3d pe = new Point3d(pb.X + w, pb.Y - h, pb.Z);
+            Line newLine = new Line(pb, pe);
+            ToModelSpace(newLine);
         }
 
         double dtvHeight = 2000;
