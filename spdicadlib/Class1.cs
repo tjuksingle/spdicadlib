@@ -116,7 +116,7 @@ namespace spdicadlib
         //<parpam name = "textString">文字内容</parpam>
         //<parpam name = "height">文字高度</parpam>
         //<return>对象ObjectId</return>
-        DBText DBtext(Point3d position,String textString,double height)
+        DBText Dtext(Point3d position,String textString,double height)
         {
             DBText ent = new DBText();
             ent.Position = position;
@@ -1042,7 +1042,7 @@ namespace spdicadlib
                 PromptResult psr = ed.GetString(pso);
                 if (psr.Status == PromptStatus.OK)
                 {
-                    ToModelSpace(DBtext(new Point3d(p3dB.X, p3dB.Y - count*dtvHeight, p3dB.Z), psr.StringResult, dtvTextHeight));
+                    ToModelSpace(Dtext(new Point3d(p3dB.X, p3dB.Y - count*dtvHeight, p3dB.Z), psr.StringResult, dtvTextHeight));
                 }
                 else
                 {
@@ -1176,5 +1176,34 @@ namespace spdicadlib
             ToModelSpace(newArc);
         }
 
+        [CommandMethod("drt")]
+        public void drt()
+        {
+            //添加实体对象
+            PromptEntityOptions peo = new PromptEntityOptions("\n获取一个实体对象");
+            PromptEntityResult per = ed.GetEntity(peo);
+
+            if (per.Status == PromptStatus.OK)
+            {
+                Database db = doc.Database;
+                using (Transaction trans = db.TransactionManager.StartTransaction())
+                {
+                    Entity ent = (Entity)trans.GetObject(per.ObjectId, OpenMode.ForRead, true);
+                    DBText dbtext = (DBText)ent;
+                    ed.WriteMessage(dbtext.TextString);
+                    ed.WriteMessage(ent.GetRXClass().Name);
+                    switch (ent.GetRXClass().Name)
+                    {
+                        case "AcDbText":
+                            break;
+                    }
+                    
+                }
+            }
+            else
+            {
+                ed.WriteMessage("革命尚未成功");
+            }
+        }
     }
 }
