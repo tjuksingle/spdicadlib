@@ -1176,64 +1176,69 @@ namespace spdicadlib
             ToModelSpace(newArc);
         }
 
-        [CommandMethod("dcf")]
-        public void dcf()
+        [CommandMethod("drt")]
+        public void drt()
         {
-            bool isEnd = false;
-            int count = 0;
-            int[] x;
-            x = new int[10];
-            int y = 1;
             Database db = doc.Database;
             using (Transaction trans = db.TransactionManager.StartTransaction())
             {
-                while (!isEnd)
+                String contact = "";
+                //添加实体对象
+                PromptEntityOptions peo = new PromptEntityOptions("\n获取一个实体对象，获取其内容");
+                PromptEntityResult per = ed.GetEntity(peo);
+                if (per.Status == PromptStatus.OK)
                 {
-                    //添加实体对象
-                    PromptEntityOptions peo = new PromptEntityOptions("\n获取一个实体对象，引索号：" + count.ToString());
-                    PromptEntityResult per = ed.GetEntity(peo);
-                    if (per.Status == PromptStatus.OK)
+                    Entity ent = (Entity)trans.GetObject(per.ObjectId, OpenMode.ForRead, true);
+                    //DBText dbtext = (DBText)ent;
+                    //ed.WriteMessage(dbtext.TextString);
+                    ed.WriteMessage(ent.GetRXClass().Name);
+                    switch (ent.GetRXClass().Name)
                     {
-                        Entity ent = (Entity)trans.GetObject(per.ObjectId, OpenMode.ForRead, true);
-                        //DBText dbtext = (DBText)ent;
-                        //ed.WriteMessage(dbtext.TextString);
-                        //ed.WriteMessage(ent.GetRXClass().Name);
-                        switch (ent.GetRXClass().Name)
-                        {
-                            case "AcDbText":
-                                DBText dbtext = (DBText)ent;
-                                x[count] = int.Parse(dbtext.TextString);
-                                count++;
-                                break;
-                            default:
-                                isEnd = true;
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        isEnd = true;
+                        case "AcDbText":
+                            DBText dbtext = (DBText)ent;
+                            contact = dbtext.TextString;
+                            break;
+                        case "AcDbMText":
+                            MText mtext = (MText)ent;
+                            contact = mtext.Text;
+                            break;
+                        default:
+                            return;
                     }
                 }
-                for (int i = 0; i < count; i++)
+                else
                 {
-                    y = y * x[i];
+                    return ;
                 }
+                
                 //ed.WriteMessage(y.ToString());
                 PromptEntityOptions peoA = new PromptEntityOptions("\n获取输出实体对象：");
                 PromptEntityResult perA = ed.GetEntity(peoA);
                 if (perA.Status == PromptStatus.OK)
                 {
                     Entity ent = (Entity)trans.GetObject(perA.ObjectId, OpenMode.ForWrite, true);
-                    DBText dbt = (DBText)ent;
-                    dbt.TextString = y.ToString();
-
+                    //DBText dbtext = (DBText)ent;
+                    //ed.WriteMessage(dbtext.TextString);
+                    ed.WriteMessage(ent.GetRXClass().Name);
+                    switch (ent.GetRXClass().Name)
+                    {
+                        case "AcDbText":
+                            DBText dbtext = (DBText)ent;
+                            dbtext.TextString = contact;
+                            break;
+                        case "AcDbMText":
+                            MText mtext = (MText)ent;
+                            mtext.Contents = contact;
+                            break;
+                        default:
+                            return;
+                            break;
+                    }
                 }
                 trans.Commit();
                 trans.Dispose();
             }
         }
-
         [CommandMethod("daad")]
         public void daad()
         {
@@ -1291,5 +1296,65 @@ namespace spdicadlib
                 trans.Dispose();
             }
         }
+
+
+        [CommandMethod("dcf")]
+        public void dcf()
+        {
+            bool isEnd = false;
+            int count = 0;
+            int[] x;
+            x = new int[10];
+            int y = 1;
+            Database db = doc.Database;
+            using (Transaction trans = db.TransactionManager.StartTransaction())
+            {
+                while (!isEnd)
+                {
+                    //添加实体对象
+                    PromptEntityOptions peo = new PromptEntityOptions("\n获取一个实体对象，引索号：" + count.ToString());
+                    PromptEntityResult per = ed.GetEntity(peo);
+                    if (per.Status == PromptStatus.OK)
+                    {
+                        Entity ent = (Entity)trans.GetObject(per.ObjectId, OpenMode.ForRead, true);
+                        //DBText dbtext = (DBText)ent;
+                        //ed.WriteMessage(dbtext.TextString);
+                        //ed.WriteMessage(ent.GetRXClass().Name);
+                        switch (ent.GetRXClass().Name)
+                        {
+                            case "AcDbText":
+                                DBText dbtext = (DBText)ent;
+                                x[count] = int.Parse(dbtext.TextString);
+                                count++;
+                                break;
+                            default:
+                                isEnd = true;
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        isEnd = true;
+                    }
+                }
+                for (int i = 0; i < count; i++)
+                {
+                    y = y * x[i];
+                }
+                //ed.WriteMessage(y.ToString());
+                PromptEntityOptions peoA = new PromptEntityOptions("\n获取输出实体对象：");
+                PromptEntityResult perA = ed.GetEntity(peoA);
+                if (perA.Status == PromptStatus.OK)
+                {
+                    Entity ent = (Entity)trans.GetObject(perA.ObjectId, OpenMode.ForWrite, true);
+                    DBText dbt = (DBText)ent;
+                    dbt.TextString = y.ToString();
+
+                }
+                trans.Commit();
+                trans.Dispose();
+            }
+        }
+        
     }
 }
