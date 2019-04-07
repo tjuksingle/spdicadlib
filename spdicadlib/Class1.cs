@@ -1293,6 +1293,90 @@ namespace spdicadlib
                 }
             }
         }
+
+
+        public void _ntp(string n, string p)
+        {
+            Database db = doc.Database;
+            using (Transaction trans = db.TransactionManager.StartTransaction())
+            {
+                try
+                {
+                    //ed.WriteMessage(y.ToString());
+                    PromptEntityOptions peoA = new PromptEntityOptions("\n获取输出实体对象：");
+                    PromptEntityResult perA = ed.GetEntity(peoA);
+                    if (perA.Status == PromptStatus.OK)
+                    {
+                        Entity ent = (Entity)trans.GetObject(perA.ObjectId, OpenMode.ForWrite, true);
+                        //DBText dbtext = (DBText)ent;
+                        //ed.WriteMessage(dbtext.TextString);
+                        string temp; string outpurStr;
+                        ed.WriteMessage(ent.GetRXClass().Name);
+                        switch (ent.GetRXClass().Name)
+                        {
+                            case "AcDbText":
+                                DBText dbtext = (DBText)ent;
+                                temp = dbtext.TextString;
+                                outpurStr = temp.Replace(n, p);
+                                dbtext.TextString = outpurStr;
+                                break;
+                            case "AcDbMText":
+                                MText mtext = (MText)ent;
+                                temp = mtext.Text;
+                                outpurStr = temp.Replace(n, p);
+                                mtext.Contents = outpurStr;
+                                break;
+                            default:
+                                return;
+                        }
+                    }
+                    trans.Commit();
+                }
+                catch { }
+                finally
+                {
+
+                    trans.Dispose();
+                }
+            }
+        }
+
+        [CommandMethod("1t2")]
+        public void _1t2()
+        {
+            _ntp("1", "2");
+        }
+
+        [CommandMethod("1t3")]
+        public void _1t3()
+        {
+            _ntp("1", "3");
+        }
+
+        [CommandMethod("2t1")]
+        public void _2t1()
+        {
+            _ntp("2", "1");
+        }
+
+        [CommandMethod("2t3")]
+        public void _2t3()
+        {
+            _ntp("2", "3");
+        }
+
+        [CommandMethod("3t1")]
+        public void _3t1()
+        {
+            _ntp("3", "1");
+        }
+
+        [CommandMethod("3t2")]
+        public void _3t2()
+        {
+            _ntp("3", "2");
+        }
+
         [CommandMethod("daad")]
         public void daad()
         {
@@ -1482,6 +1566,116 @@ namespace spdicadlib
             }
         }
 
+        [CommandMethod("dxz")]
+        public void dxz()
+        {
+            int isXFixed = 0;
+            PromptKeywordOptions pko = new PromptKeywordOptions("\n选择属性");
+            pko.Keywords.Add("XS", "XS", "水平方向，矮的上移(XS)");
+            pko.Keywords.Add("XX", "XX", "水平方向，高的下移(XX)");
+            pko.Keywords.Add("YS", "YS", "竖直方向，矮的上移(YS)");
+            pko.Keywords.Add("YX", "YX", "竖直方向，高的下移(YX)");
+
+            PromptResult pr = ed.GetKeywords(pko);
+            if (pr.Status == PromptStatus.OK)
+            {
+                if (pr.StringResult == "XS") {
+                    isXFixed = 0;
+                } 
+                if (pr.StringResult == "XX") {
+                    isXFixed = 1;
+                }
+                if (pr.StringResult == "YS")
+                {
+                    isXFixed = 2;
+                }
+                if (pr.StringResult == "YX")
+                {
+                    isXFixed = 3;
+                }
+            }else{}
+            //添加实体对象
+            DBObjectCollection dboc = collection();
+            if (dboc == null) { ed.WriteMessage("任务中止"); return; }
+            
+            Database db = doc.Database;
+            using (Transaction trans = db.TransactionManager.StartTransaction())
+            {
+                try
+                {
+                    foreach (DBObject obj in dboc)
+                    {
+                        Entity ent = obj as Entity;
+                        if (ent != null)
+                        {
+                            Entity entn;
+                            entn = (Entity)trans.GetObject(ent.ObjectId, OpenMode.ForWrite, true);
+                            if (entn.GetRXClass().Name == "AcDbLine")
+                            {
+                                Line l = (Line)entn;
+                                Point3d ep = l.EndPoint;
+                                Point3d sp = l.StartPoint;
+                                switch (isXFixed)
+                                {
+                                    case 0:
+                                        if (ep.Y < sp.Y)
+                                        {
+                                            l.EndPoint = new Point3d(ep.X,sp.Y,ep.Z);
+                                        }
+                                        else
+                                        {
+                                            l.StartPoint = new Point3d(ep.X, sp.Y, ep.Z);
+                                        }
+                                        break;
+                                    case 1:
+                                        if (ep.Y < sp.Y)
+                                        {
+                                            l.StartPoint = new Point3d(sp.X, ep.Y, sp.Z);
+                                        }
+                                        else
+                                        {
+                                            l.EndPoint = new Point3d(ep.X, sp.Y, ep.Z);
+                                        }
+                                        break;
+                                    case 2:
+                                        if (ep.X < sp.X)
+                                        {
+                                            l.EndPoint = new Point3d(sp.X, ep.Y, ep.Z);
+                                        }
+                                        else
+                                        {
+                                            l.StartPoint = new Point3d(sp.X, ep.Y, ep.Z);
+                                        }
+                                        break;
+                                    case 3:
+                                        if (ep.X < sp.X)
+                                        {
+                                            l.StartPoint = new Point3d(ep.X, sp.Y, ep.Z);
+                                        }
+                                        else
+                                        {
+                                            l.EndPoint = new Point3d(sp.X, ep.Y, ep.Z);
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                    trans.Commit();
+                }
+                catch
+                {
+                    ed.WriteMessage("Error：Unknown Entity.");
+                }
+                finally
+                {
+                    trans.Dispose();
+                }
+
+            }
+
+        }
+
         [CommandMethod("dxf")]
         public void dxf()
         {
@@ -1515,16 +1709,7 @@ namespace spdicadlib
                             if (entn.GetRXClass().Name == "AcDbLine")
                             {
                                 Line l = (Line)entn;
-                                Point3d ep = l.EndPoint;
-                                Point3d sp = l.StartPoint;
-                                if (getDi(ep, targetPt) > getDi(sp, targetPt))
-                                {
-                                    l.StartPoint = targetPt;
-                                }
-                                else
-                                {
-                                    l.EndPoint = targetPt;
-                                }
+                                l.EndPoint = targetPt;
                             }
                         }
                     }
