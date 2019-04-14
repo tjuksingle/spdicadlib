@@ -1294,6 +1294,42 @@ namespace spdicadlib
             }
         }
 
+        [CommandMethod("ddet")] //不好用，不要用
+        public void ddet()
+        {
+            //添加实体对象
+            DBObjectCollection dboc = collection();
+            if (dboc == null) { ed.WriteMessage("任务中止"); return; }
+            
+            Database db = doc.Database;
+            using (Transaction trans = db.TransactionManager.StartTransaction())
+            {
+                foreach (DBObject obj in dboc)
+                {
+//                    Entity ent = obj as Entity;
+                    Entity ent = (Entity)trans.GetObject(obj.Id, OpenMode.ForWrite);
+                    if (ent != null)
+                    {
+                        ed.WriteMessage(ent.GetRXClass().Name+"\n");
+                        switch (ent.GetRXClass().Name)
+                        {
+                            case "AcDbText":
+                                ent.Erase(true);
+                                break;
+                            case "AcDbMText":
+                                ent.Erase(true);
+                                break;
+                            default:
+                                break;
+                        }
+
+                    }
+                }
+                
+                trans.Commit();
+                trans.Dispose();
+            }
+        }
 
         public void _ntp(string n, string p)
         {
