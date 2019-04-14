@@ -20,9 +20,19 @@ namespace spdicadlib
         Editor ed = Application.DocumentManager.MdiActiveDocument.Editor;
         Document doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
 
+        double contantConsult = 1;
+
+        double getConsult()
+        {
+            return 125 * contantConsult;
+        }
+        [CommandMethod("dcc")]
+        public void dcc()
+        {
+            contantConsult = getNewDouble("\n修改当前比例：")/50;
+        }
         //获取要填写的字符串
         String dlinetext_str = "默认字符串";
-        double dlinetext_str_height = 125;
         [CommandMethod("dlinetext")]
         public void dlinetext()
         {
@@ -30,21 +40,11 @@ namespace spdicadlib
             while (!isPointSelected)
             {
                 //获取要放的位置或者修改字符大小
-                PromptPointOptions ppo = new PromptPointOptions("点击基点的位置 或者 ");
-                ppo.Keywords.Add("S", "S", "修改字符大小(S)");
+                PromptPointOptions ppo = new PromptPointOptions("点击基点的位置");
                 PromptPointResult ppr = ed.GetPoint(ppo);
 
                 Point3d p3d = new Point3d(0, 0, 0);
-                if (ppr.Status == PromptStatus.Keyword)
-                {
-                    if (ppr.StringResult == "S")
-                    {
-                        PromptDoubleOptions pdo = new PromptDoubleOptions("修改字符大小为：");
-                        PromptDoubleResult pdr = ed.GetDouble(pdo);
-                        dlinetext_str_height = pdr.Value;
-                    }
-                }
-                else if (ppr.Status != PromptStatus.OK)
+                if (ppr.Status != PromptStatus.OK)
                 {
                     ed.WriteMessage("出现错误");
                     isPointSelected = true;
@@ -78,14 +78,12 @@ namespace spdicadlib
                 dlinetext_str = pr.StringResult;
             }
 
-            //ToModelSpace(DBtext(p3d, dlinetext_str, dlinetext_str_height));
-            //double gain = 1 + Math.Pow(0.8, 0.12 * dlinetext_str.Length + dlinetext_str_height / 75);
-            MText mMText = newMtext(new Point3d(p3d.X, p3d.Y + 1.2 * dlinetext_str_height, p3d.Z),
-                                  dlinetext_str, dlinetext_str_height, 0, 0, false);
+            MText mMText = newMtext(new Point3d(p3d.X, p3d.Y + 1.2 * getConsult(), p3d.Z),
+                                  dlinetext_str, 0, 0, false);
             ToModelSpace(mMText); 
             Extents3d e3d = mMText.GeometricExtents;
-            ToModelSpace(new Line(new Point3d(p3d.X, p3d.Y - dlinetext_str_height * 0.25, p3d.Z),
-                            new Point3d(p3d.X + e3d.MaxPoint.X - e3d.MinPoint.X + 10 * dlinetext_str.Length, p3d.Y - dlinetext_str_height * 0.25, p3d.Z)));    
+            ToModelSpace(new Line(new Point3d(p3d.X, p3d.Y - getConsult() * 0.25, p3d.Z),
+                            new Point3d(p3d.X + e3d.MaxPoint.X - e3d.MinPoint.X + 10 * dlinetext_str.Length, p3d.Y - getConsult() * 0.25, p3d.Z)));    
         }
 
         //<summary>
@@ -116,12 +114,12 @@ namespace spdicadlib
         //<parpam name = "textString">文字内容</parpam>
         //<parpam name = "height">文字高度</parpam>
         //<return>对象ObjectId</return>
-        DBText Dtext(Point3d position,String textString,double height)
+        DBText Dtext(Point3d position,String textString)
         {
             DBText ent = new DBText();
             ent.Position = position;
             ent.TextString = textString;
-            ent.Height = height;
+            ent.Height = getConsult();
             return ent;
         }
 
@@ -135,11 +133,11 @@ namespace spdicadlib
         //<parpam name = "rot">文字转角</parpam>
         //<parpam name = "rot">是否包含域</parpam>
         //<return>多行文字MText</return>
-        MText newMtext(Point3d position, String textString, double height,double width,double rot,bool isField)
+        MText newMtext(Point3d position, String textString,double width,double rot,bool isField)
         {
             MText ent = new MText();
             ent.Location = position;
-            ent.TextHeight = height;
+            ent.TextHeight = getConsult();
             ent.Width = width;
             ent.Rotation = rot;
             if (isField)
@@ -541,6 +539,19 @@ namespace spdicadlib
             return entCollection;
         }
 
+        ObjectId getEnt(string message)
+        {
+            PromptEntityResult per = ed.GetEntity(message);
+            if (per.Status == PromptStatus.OK)
+            {
+                return per.ObjectId;
+            }
+            else
+            {
+                return ObjectId.Null;
+            }
+
+        }
         //<summary>
         //移动单个实体
         //</summary>
@@ -573,7 +584,6 @@ namespace spdicadlib
         double arcr = 340;
         double sAngel = 180;
         double nAngel = 90;
-        double textHeight = 375;
         double daa_consult = 1;
         [CommandMethod("daa")]
         public void daa()
@@ -609,10 +619,10 @@ namespace spdicadlib
                                               new Point3d(basePt.X + cirr * daa_consult * Math.Cos(angelToRad(nAngel)) + (cirr - arcr) * daa_consult * Math.Cos(angelToRad(nAngel + 210)),
                                                                   basePt.Y + cirr * daa_consult * Math.Sin(angelToRad(nAngel)) + (cirr - arcr) * daa_consult * Math.Sin(angelToRad(nAngel + 210)),
                                                                   basePt.Z)));
-                        ToModelSpace(newMtext(new Point3d(basePt.X + (cirr * daa_consult + textHeight) * Math.Cos(angelToRad(nAngel)),
-                                                                  basePt.Y + (cirr * daa_consult + textHeight) * Math.Sin(angelToRad(nAngel)) + 1.2 * textHeight,
+                        ToModelSpace(newMtext(new Point3d(basePt.X + (cirr * daa_consult + getConsult()) * Math.Cos(angelToRad(nAngel)),
+                                                                  basePt.Y + (cirr * daa_consult + getConsult()) * Math.Sin(angelToRad(nAngel)) + 1.2 * getConsult(),
                                                                   basePt.Z),
-                                                                  "N", textHeight,0,0,false));
+                                                                  "N", 0, 0, false));
                         ToModelSpace(new Line(basePt, new Point3d(basePt.X + cirr * daa_consult * Math.Cos(angelToRad(sAngel)),
                                                                   basePt.Y + cirr * daa_consult * Math.Sin(angelToRad(sAngel)),
                                                                   basePt.Z)));
@@ -622,9 +632,9 @@ namespace spdicadlib
                                               new Point3d(basePt.X + cirr * daa_consult * Math.Cos(angelToRad(sAngel)) + (cirr - arcr) * daa_consult * Math.Cos(angelToRad(sAngel + 210)),
                                                                   basePt.Y + cirr * daa_consult * Math.Sin(angelToRad(sAngel)) + (cirr - arcr) * daa_consult * Math.Sin(angelToRad(sAngel + 210)),
                                                                   basePt.Z)));
-                        ToModelSpace(newMtext(new Point3d(basePt.X + (cirr * daa_consult + textHeight) * Math.Cos(angelToRad(sAngel)),
-                                                                  basePt.Y + (cirr * daa_consult + textHeight) * Math.Sin(angelToRad(sAngel)) + 1.2 * textHeight,
-                                                                  basePt.Z), pdr.Value.ToString()+"°", textHeight,0,0,false));
+                        ToModelSpace(newMtext(new Point3d(basePt.X + (cirr * daa_consult + getConsult()) * Math.Cos(angelToRad(sAngel)),
+                                                                  basePt.Y + (cirr * daa_consult + getConsult()) * Math.Sin(angelToRad(sAngel)) + 1.2 * getConsult(),
+                                                                  basePt.Z), pdr.Value.ToString() + "°", 0, 0, false));
                         isEnd = true;
                     }
                     else
@@ -845,8 +855,7 @@ namespace spdicadlib
             bool isEnd = false;
             while (!isEnd)
             {
-                PromptPointOptions ppo = new PromptPointOptions("\n选择基点 或者 ");
-                ppo.Keywords.Add("S", "S", "修改字体大小(S)");
+                PromptPointOptions ppo = new PromptPointOptions("\n选择基点");
                 PromptPointResult ppr = ed.GetPoint(ppo);
                 Point3d basePt;
                 if (ppr.Status == PromptStatus.OK)
@@ -881,7 +890,7 @@ namespace spdicadlib
                         if (angel == 0 && an != 90 && an != -90)
                         {
                             ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
-                                             "N", dnStrHeight, 0, 0, false));
+                                             "N", 0, 0, false));
                             return;
                         }
                         else
@@ -903,20 +912,20 @@ namespace spdicadlib
                                 {
 
                                     ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
-                                                      "N", dnStrHeight, 0, 0, false));
+                                                      "N", 0, 0, false));
                                     ToModelSpace(newMtext(new Point3d(basePt.X + 1000 * Math.Cos(angelToRad(angel)),
                                                                       basePt.Y + 1000 * Math.Sin(angelToRad(angel)),
                                                                       basePt.Z),
-                                                          Math.Abs(an).ToString() + "°", dnStrHeight, 0, 0, false));
+                                                          Math.Abs(an).ToString() + "°", 0, 0, false));
                                 }
                                 else
                                 {
                                     ToModelSpace(newMtext(new Point3d(basePt.X, basePt.Y + 1000, basePt.Z),
-                                                      Math.Abs(an).ToString() + "°", dnStrHeight, 0, 0, false));
+                                                      Math.Abs(an).ToString() + "°", 0, 0, false));
                                     ToModelSpace(newMtext(new Point3d(basePt.X + 1000 * Math.Cos(angelToRad(angel)),
                                                                       basePt.Y + 1000 * Math.Sin(angelToRad(angel)),
                                                                       basePt.Z),
-                                                          "N", dnStrHeight, 0, 0, false));
+                                                          "N", 0, 0, false));
                                 }
                             }
                         }
@@ -926,15 +935,6 @@ namespace spdicadlib
                 else
                 {
                     isEnd = true;
-                }
-                if (ppr.Status == PromptStatus.Keyword)
-                {
-                    dnStrHeight = getNewDouble("\n输入新的字体大小");
-                    if (dnStrHeight == 0)
-                    {
-                        ed.WriteMessage("\n请输入大于零的数");
-                        isEnd = true;
-                    }
                 }
             }
         }
@@ -982,83 +982,76 @@ namespace spdicadlib
             ToModelSpace(newLine);
         }
 
-        double dtvHeight = 2000;
-        double dtvTextHeight = 100;
         [CommandMethod("dtv")]
         public void dTableVaule()
         {
-            PromptKeywordOptions pko = new PromptKeywordOptions("\n初始化选择");
-            pko.Keywords.Add("D", "D", "自动获取距离(D)");
-            pko.Keywords.Add("H", "H", "手动输入(H)");
-            pko.Keywords.Add("T", "T", "修改字符高度(T)");
-            pko.Keywords.Add("H", "H", "手动输入(H)");
-            pko.Keywords.Add("S", "S", "保持上次配置(S)");
-            PromptResult pr = ed.GetKeywords(pko);
-            if (pr.Status == PromptStatus.OK)
+            ObjectId uid = getEnt("\n选择参考实体1");
+            ObjectId did = getEnt("\n选择参考实体2");
+
+            if (uid == ObjectId.Null)
             {
-                if (pr.StringResult == "D")
-                {
-                    PromptDoubleResult pdr = ed.GetDistance("点击两点确定距离");
-                    dtvHeight = pdr.Value;
-                }
-                if (pr.StringResult == "H")
-                {
-                    double temp = getNewDouble("\n输入表格高度");
-                    if (temp == 0)
-                    {
-                        ed.WriteMessage("\n请输入大于零的数");
-                    }
-                    else
-                    {
-                        dtvHeight = temp;
-                    }
-                }
-                if (pr.StringResult == "T")
-                {
-                    double temp = getNewDouble("\n输入字符高度");
-                    if (temp == 0)
-                    {
-                        ed.WriteMessage("\n请输入大于零的数");
-                    }
-                    else
-                    {
-                        dtvTextHeight = temp;
-                    }
-                }
-                if (pr.StringResult == "S")
-                {
-                    
-                }
+                return;
+            }
+            if (did == ObjectId.Null)
+            {
+                return;
             }
 
-            Point3d p3dB = Point3d.Origin;
-            PromptPointOptions ppo = new PromptPointOptions("\n选择一个起点");
-            PromptPointResult ppr = ed.GetPoint(ppo);
-            if (ppr.Status == PromptStatus.OK)
-            {
-                p3dB = ppr.Value;
-            }
-            else
-            {
-                ed.WriteMessage("出现错误");
-            }
+             Database db = doc.Database;
+             using (Transaction trans = db.TransactionManager.StartTransaction())
+             {
+                 try
+                 {
+                     Entity entu;
+                     entu = (Entity)trans.GetObject(uid, OpenMode.ForRead, true);
+                     Extents3d e3du = entu.GeometricExtents;
+                     ed.WriteMessage("\n"+e3du.MinPoint.Y.ToString());
+                     Entity entd;
+                     entd = (Entity)trans.GetObject(did, OpenMode.ForRead, true);
+                     Extents3d e3dd = entd.GeometricExtents;
+                     ed.WriteMessage("\n"+e3dd.MinPoint.Y.ToString());
 
-            bool isEnd = false;
-            int count = 0;
-            PromptStringOptions pso = new PromptStringOptions("\n输入一串字符或值");
-            while (!isEnd)
-            {
-                PromptResult psr = ed.GetString(pso);
-                if (psr.Status == PromptStatus.OK)
-                {
-                    ToModelSpace(Dtext(new Point3d(p3dB.X, p3dB.Y - count*dtvHeight, p3dB.Z), psr.StringResult, dtvTextHeight));
-                }
-                else
-                {
-                    isEnd = true;
-                }
-                count++;
-            }
+                     double distance = e3du.MinPoint.Y -e3dd.MinPoint.Y;
+                     ed.WriteMessage(distance.ToString());
+
+                     DBObjectCollection dbo = collection();
+
+                     foreach (DBObject obj in dbo)
+                     {
+                         Entity ent = obj as Entity;
+                         if (ent != null)
+                         {
+                             string entClassName =ent.GetRXClass().Name;
+                             if (entClassName == "AcDbLine"){}
+                             if (entClassName == "AcDbText")
+                             {
+                                 DBText t = (DBText)ent;
+                                 Extents3d e3dn = ent.GeometricExtents;
+                                 Point3d basePt = new Point3d(e3dn.MinPoint.X, e3dn.MinPoint.Y - distance, e3dn.MinPoint.Z);
+                                 DBText dbtext = Dtext(basePt, t.TextString);
+                                 ToModelSpace(dbtext);
+                             }
+                             if (entClassName == "AcDbMText")
+                             {
+                                 MText mt = (MText)ent;
+                                 Extents3d e3dn = ent.GeometricExtents;
+                                 Point3d basePt = new Point3d(e3dn.MinPoint.X, e3dn.MinPoint.Y - distance, e3dn.MinPoint.Z);
+                                 DBText dbtext = Dtext(basePt, mt.Text);
+                                 ToModelSpace(dbtext);
+                             }
+                         }
+                     }
+                     trans.Commit();
+                 }
+                 catch{
+
+                 }
+                 finally
+                 {
+                     trans.Dispose();
+                 }
+             }
+
         }
 
         double ddrr = 100;
@@ -1710,6 +1703,96 @@ namespace spdicadlib
 
             }
 
+        }
+
+        [CommandMethod("dxa")]
+        public void dxa()
+        {
+            //添加处理对象
+            ObjectId lid = getEnt("\n选择直线实体");
+            ObjectId tid = getEnt("\n选择文字实体");
+            if (lid == ObjectId.Null)
+            {
+                return;
+            }
+            if (tid == ObjectId.Null)
+            {
+                return;
+            }
+
+            PromptKeywordOptions pko = new PromptKeywordOptions("\n选择属性：");
+            pko.Keywords.Add("L", "L", "左边(L)");
+            pko.Keywords.Add("R", "R", "右边(R)");
+
+            PromptResult pr = ed.GetKeywords(pko);
+
+            bool isLeft = false;
+            if (pr.Status == PromptStatus.OK)
+            {
+                if (pr.StringResult == "L")
+                {
+                    isLeft = true;
+                } 
+                if (pr.StringResult == "R")
+                {
+                    isLeft = false;
+                }
+            }
+
+            Database db = doc.Database;
+            using (Transaction trans = db.TransactionManager.StartTransaction())
+            {
+                try
+                {
+                    Entity entt;
+                    entt = (Entity)trans.GetObject(tid, OpenMode.ForWrite, true);
+                    Extents3d e3d = entt.GeometricExtents;;
+                    double l = e3d.MaxPoint.X - e3d.MinPoint.X;
+                    Entity entl;
+                    entl = (Entity)trans.GetObject(lid, OpenMode.ForWrite, true);
+                    if (entl.GetRXClass().Name == "AcDbLine")
+                    {
+                        Line line = (Line)entl;
+                        if (line.StartPoint.X < line.EndPoint.X)
+                        {
+                            if (isLeft)
+                            {
+                                Point3d p3d = new Point3d(line.StartPoint.X + l, line.EndPoint.Y, line.EndPoint.Z);
+                                line.EndPoint = p3d;
+                            }
+                            else
+                            {
+                                Point3d p3d = new Point3d(line.EndPoint.X + l, line.StartPoint.Y, line.StartPoint.Z);
+                                line.StartPoint = p3d;
+                            }
+                        }
+                        else
+                        {
+                            if (isLeft)
+                            {
+                                Point3d p3d = new Point3d(line.EndPoint.X + l, line.StartPoint.Y, line.StartPoint.Z);
+                                line.StartPoint = p3d;
+                            }
+                            else
+                            {
+                                Point3d p3d = new Point3d(line.StartPoint.X + l, line.EndPoint.Y, line.EndPoint.Z);
+                                line.EndPoint = p3d;
+                            }
+                        }
+                    }
+
+                    trans.Commit();
+                }
+                catch
+                {
+                    ed.WriteMessage("Error：Unknown Entity.");
+                }
+                finally
+                {
+                    trans.Dispose();
+                }
+
+            }
         }
 
         [CommandMethod("dxf")]
