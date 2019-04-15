@@ -287,7 +287,6 @@ namespace spdicadlib
             }
         }
 
-        double dtb_gradient = 100;
         [CommandMethod("dtb")]
         public void dtb()
         {
@@ -295,7 +294,7 @@ namespace spdicadlib
             uint count = 0;
             uint times = 1;
             Point3d bePoint = Point3d.Origin;
-            Point3d endPoint = Point3d.Origin;
+            //Point3d endPoint = Point3d.Origin;
             //获取已有距离
             double be = getdi("\n选择已有长度获取点");
             //获取要放的位置
@@ -305,7 +304,6 @@ namespace spdicadlib
             ppo.Keywords.Add("L", "L", "获取长度(L)");
             ppo.Keywords.Add("T", "T", "倍数(T)");
             ppo.Keywords.Add("D", "D", "修改方向(D)");
-            ppo.Keywords.Add("E", "E", "结束(E)");
             Point3d p3dBefore = new Point3d(0, 0, 0);
             while (!isEnd)
             {
@@ -377,16 +375,13 @@ namespace spdicadlib
                             }
                         }
                     }
-                    if (ppr.StringResult == "E")
-                    {
-                        endPoint = new Point3d(p3dAfter.X + arg.X * (dtable_gradient + be), p3dAfter.Y + arg.Y * (dtable_gradient + be), p3dAfter.Z + arg.Z * (dtable_gradient + be));
-                        Line line = new Line(bePoint, endPoint);
-                        ToModelSpace(line);
-                    }
                 }
                 else if (ppr.Status != PromptStatus.OK)
                 {
-                    ed.WriteMessage("结束了");
+                    ed.WriteMessage("结束了"); 
+                    //endPoint = new Point3d(p3dAfter.X + arg.X * (dtable_gradient + be), p3dAfter.Y + arg.Y * (dtable_gradient + be), p3dAfter.Z + arg.Z * (dtable_gradient + be));
+                    Line line = new Line(bePoint, new Point3d(bePoint.X-800,bePoint.Y-800,bePoint.Z-800));
+                    ToModelSpace(line);
                     isEnd = true;
                 }
                 else
@@ -420,12 +415,12 @@ namespace spdicadlib
         //<return>对象ObjectId</return>
         public void dtableLine(Point3d p3db, Point3d p3de,double gradient, Point3d arg, uint times)
         {
-            for (int i = 1; i <= times; i++)
-            {
-                Line line = new Line(new Point3d(p3db.X + arg.X * gradient * i, p3db.Y + arg.Y * gradient * i, p3db.Z + arg.Z * gradient * i),
-                                    new Point3d(p3de.X + arg.X * gradient * i, p3de.Y + arg.Y * gradient * i, p3de.Z + arg.Z * gradient * i));
-                ToModelSpace(line);
-            }
+            //for (int i = 1; i <= times; i++)
+            //{
+                //Line line = new Line(new Point3d(p3db.X + arg.X * gradient * i, p3db.Y + arg.Y * gradient * i, p3db.Z + arg.Z * gradient * i),
+                //                    new Point3d(p3de.X + arg.X * gradient * i, p3de.Y + arg.Y * gradient * i, p3de.Z + arg.Z * gradient * i));
+                //ToModelSpace(line);
+            //}
             Line line1 = new Line(p3db,
                                 new Point3d(p3db.X + arg.X * gradient * times, p3db.Y + arg.Y * gradient * times, p3db.Z + arg.Z * gradient * times));
             Line line2 = new Line(p3de,
@@ -848,7 +843,6 @@ namespace spdicadlib
             }
         }
 
-        double dnStrHeight = 125;
         [CommandMethod("dn")]
         public void dn()
         {
@@ -938,7 +932,6 @@ namespace spdicadlib
                 }
             }
         }
-
 
         Point3d getNewPoint(String message)
         {
@@ -1705,6 +1698,93 @@ namespace spdicadlib
 
         }
 
+        [CommandMethod("dxm")]
+        public void dxm(){
+            //添加处理对象
+            ObjectId lid1 = getEnt("\n选择基准直线实体1");
+            ObjectId lid2 = getEnt("\n选择需要移动的直线实体2");
+            if (lid1 == ObjectId.Null)
+            {
+                return;
+            }
+            if (lid2 == ObjectId.Null)
+            {
+                return;
+            }
+
+            PromptKeywordOptions pko = new PromptKeywordOptions("\n选择属性：");
+            pko.Keywords.Add("L", "L", "左边(L)");
+            pko.Keywords.Add("R", "R", "右边(R)");
+
+            PromptResult pr = ed.GetKeywords(pko);
+
+            bool isLeft = false;
+            if (pr.Status == PromptStatus.OK)
+            {
+                if (pr.StringResult == "L")
+                {
+                    isLeft = true;
+                }
+                if (pr.StringResult == "R")
+                {
+                    isLeft = false;
+                }
+            }
+
+            Database db = doc.Database;
+            using (Transaction trans = db.TransactionManager.StartTransaction())
+            {
+                try
+                {
+                    Entity entlm;
+                    entlm = (Entity)trans.GetObject(lid2, OpenMode.ForWrite, true);
+                    Entity entlb;
+                    entlb = (Entity)trans.GetObject(lid1, OpenMode.ForWrite, true);
+                    if (entlb.GetRXClass().Name == "AcDbLine" && entlm.GetRXClass().Name == "AcDbLine")
+                    {
+                        Line linem = (Line)entlm;
+                        Line lineb = (Line)entlb;
+                        if (lineb.StartPoint.X < lineb.EndPoint.X)
+                        {
+                            if (isLeft)
+                            {
+                                linem.StartPoint = lineb.StartPoint;
+                                linem.EndPoint = new Point3d(lineb.StartPoint.X - 800, lineb.StartPoint.Y - 800, 0);
+                            }
+                            else
+                            {
+                                linem.StartPoint = lineb.EndPoint;
+                                linem.EndPoint = new Point3d(lineb.EndPoint.X - 800, lineb.EndPoint.Y - 800, 0);
+                            }
+                        }
+                        else
+                        {
+                            if (isLeft)
+                            {
+                                linem.StartPoint = lineb.EndPoint;
+                                linem.EndPoint = new Point3d(lineb.EndPoint.X - 800, lineb.EndPoint.Y - 800, 0);
+                            }
+                            else
+                            {
+                                linem.StartPoint = lineb.StartPoint;
+                                linem.EndPoint = new Point3d(lineb.StartPoint.X - 800, lineb.StartPoint.Y - 800, 0);
+                            }
+                        }
+                    }
+
+                    trans.Commit();
+                }
+                catch
+                {
+                    ed.WriteMessage("Error：Unknown Entity.");
+                }
+                finally
+                {
+                    trans.Dispose();
+                }
+            }
+        }
+
         [CommandMethod("dxa")]
         public void dxa()
         {
@@ -1845,5 +1925,39 @@ namespace spdicadlib
                 
             }
         }
+        /*
+        [CommandMethod("tred")]
+        public void tred()
+        {
+            DBObjectCollection dboc = collection();
+            if (dboc == null) { ed.WriteMessage("任务中止"); return; }
+             Database db = doc.Database;
+             using (Transaction trans = db.TransactionManager.StartTransaction())
+             {
+                 try
+                 {
+                     foreach (DBObject obj in dboc)
+                     {
+                         Entity ent = obj as Entity;
+                         if (ent != null)
+                         {
+                             Entity entn;
+                             entn = (Entity)trans.GetObject(ent.ObjectId, OpenMode.ForWrite, true);
+                             byte byteValue1 = 255;
+                             byte byteValue2 = 0;
+                             entn.Color.FromRgb(byteValue1, byteValue2, byteValue2);
+                         }
+                     }
+                 }
+                 catch
+                 {
+
+                 }
+                 finally
+                 {
+
+                 }
+             }
+        }*/
     }
 }
