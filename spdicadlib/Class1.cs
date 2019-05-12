@@ -1399,6 +1399,16 @@ namespace spdicadlib
             _ntp("3", "2");
         }
 
+        [CommandMethod("nto")]
+        public void nto() {
+            _ntp("新增", "原有");
+        }
+        
+        [CommandMethod("otn")]
+        public void otn() {
+            _ntp("原有", "新增");
+        }
+
         [CommandMethod("daad")]
         public void daad()
         {
